@@ -1,6 +1,7 @@
 # Dynamic Power Management (DPM)
-Dynamic Power Management using Reinforcement Learning for IoT devices.
 
-##Setting up environment
+A Dynamic Power Management algorithm using Reinforcement Learning for IoT devices is impemented in this project.
 
-1.[Installing Python](https://www.python.org/downloads)
+## Setting up environment
+
+1. [Installing Python](https://www.python.org/downloads)
