@@ -7,10 +7,11 @@ agent = manager.DPM(size)
 
 clk = 0
 while(1):
+    print "clk[",clk,"]"
     agent.stimulate(clk)
     clk += 1
 
-    if(clk == size):
+    if(clk == size+1):
         break
 
 agent.view_queue()

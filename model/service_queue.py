@@ -6,11 +6,16 @@ import matplotlib.pyplot as plt
 class Service_Queue:
  
     
-    def __init__(self):
+    def __init__(self, size):
         self.q = Queue.Queue()
+        self.queue_size = size
     
     def add(self, requests):
-        self.q.put(requests)
+        if(self.q.qsize() < self.queue_size):
+            self.q.put(requests)
+            return True
+        else:
+            return False
 
     def get(self):
         return self.q.get()
