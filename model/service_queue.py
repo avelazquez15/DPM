@@ -34,6 +34,9 @@ class Service_Queue:
     def queue(self):
         return self.q
 
+    def count(self):
+        return self.q.qsize()
+
 
 
 
