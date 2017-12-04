@@ -4,6 +4,7 @@ import Queue
 import matplotlib.pyplot as plt
 import math
 from collections import deque
+import termios, fcntl, sys, os
 
 
 class Service_Queue:
@@ -35,7 +36,7 @@ class Service_Queue:
                 else:
                     self.q.put(packets - requests)
                 
-                print "Arrival time @ index: " , self.timer, " @ ", self.q.qsize()-1
+                #print "Arrival time @ index: " , self.timer, " @ ", self.q.qsize()-1
                 self.request_arrival.append(self.timer)
         
             return True
@@ -75,14 +76,10 @@ class Service_Queue:
         return self.queue_size
 
 # packet details
-    def request_time(self, pop):
+    def request_time(self):
         times = list(self.request_arrival)
-        if(len(times) > 0 and pop == True):
+        if(len(times) > 0):
             return self.request_arrival.popleft()
-        else:
-            return self.request_arrival[0]
-
-
 
 # Timer details
     def increment_timer(self):
@@ -100,6 +97,13 @@ class Service_Queue:
 
     def reset_timer(self):
         self.timer = 0
+
+
+# debugging
+    def wait_debug(self, message):
+        print "[DEBUG] ", message
+        sys.stdin.read(1)
+
 
 
 

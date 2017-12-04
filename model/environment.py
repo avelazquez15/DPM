@@ -105,13 +105,13 @@ class environment:
         #self.wait_debug(message)
         self.service_provider.transition_period += 1
         delay = self.service_provider.get_transition_delay(self.transition_dir)
-        print "delay .. transition: ", delay
+        #print "delay .. transition: ", delay
         print "self.service_provider.transition_period = ", self.service_provider.transition_period
         
         if(self.service_provider.transition_period == delay):
             self.service_provider.transition_period = 0
-            print "transition direction:", self.transition_dir
-            self.evaluate_cost(current_state, True)
+            #print "transition direction:", self.transition_dir
+            self.evaluate_cost(current_state)
             self.service_provider.set_cycle(0)
             self.service_provider.set_time_out(0)
             self.service_provider.set_duration(0)
@@ -129,20 +129,30 @@ class environment:
     def evaluate_transition(self):
         cost = self.cost(self.current_state(), self.transition_dir)
         self.update_state_value(self.current_state(), self.queue_count(), cost)
-
+    
+#evaluate cost function
+    def evaluate_cost(self, current_state):
+        cost = self.cost(current_state, self.transition_dir)
+        self.update_state_value(current_state, self.queue_count(), cost)
+    
 # state value details
-    def cost(self, state, direction,pop):
+    def cost(self, state, direction):
         a = 0.9
-        return  -1*(a*self.delay_cost(state, direction, pop) + (1-a)*self.power_cost(state))
+        return  -1*(a*self.delay_cost(state, direction) + (1-a)*self.power_cost(state))
 
-    def delay_cost(self, state, direction,pop):
-        if(state == self.idle):
-            delay = self.service_provider.get_transition_delay(direction)
-            A = 1
-        else:
-            self.cost_init = self.service_queue.request_time(pop)
+    def delay_cost(self, state, direction):
+        if(state == self.sleep):
             delay = (self.cost_final - self.cost_init)# + self.service_provider.get_transition_delay(direction)
             A = 2
+        
+        elif(state == self.active and direction == "active2active"):
+            self.cost_init = self.service_queue.request_time()
+            delay = (self.cost_final - self.cost_init)# + self.service_provider.get_transition_delay(direction)
+            A = 3
+        else:
+            delay = self.service_provider.get_transition_delay(direction)
+            A = 1
+        
 
         
         print "[A:",A,"]","self.cost_final, self.cost_init, delay: ",self.cost_final, self.cost_init, delay
@@ -154,20 +164,17 @@ class environment:
         power = self.power_profile[self.state_str(state)]
         energy = power*cycle_duration
 
-        print "power_cost [cycle_duration, power] =", "[",cycle_duration, ",", power, "]"
-        print "energy: ", energy
+#print "power_cost [cycle_duration, power] =", "[",cycle_duration, ",", power, "]"
+#print "energy: ", energy
 
         return energy
 
     def update_state_value(self, state, queue_count, value):
         self.state_value[state-1][queue_count] = value
         print "[UPDATE] \n", self.state_value
-        print "\n[state, queue_count] = cost\n", "[", self.state_str(state), ",", queue_count, "] = ", value
+    #print "\n[state, queue_count] = cost\n", "[", self.state_str(state), ",", queue_count, "] = ", value
     
-#cost function
-    def evaluate_cost(self, current_state, pop):
-        cost = self.cost(current_state, self.transition_dir, pop)
-        self.update_state_value(current_state, self.queue_count(), cost)
+
     
 # debugging
     def wait_debug(self, message):
