@@ -15,6 +15,7 @@ class Service_Requester:
             internal_clk += 1
         self.inter_arrival = list(set(self.inter_arrival))
         self.inter_arrival = sorted(self.inter_arrival)
+        self.inter_arrival = [13, 14, 15, 23]
         print "self.inter_arrival \n", self.inter_arrival
 
 
@@ -25,7 +26,7 @@ class Service_Requester:
         return value in self.inter_arrival
 
     def request_count(self):
-        return randrange(1, 50)
+        return randrange(1, 21)
 
     def view(self):
         plt.stem( self.inter_arrival)

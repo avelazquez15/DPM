@@ -2,6 +2,9 @@ import numpy as np
 from random import randrange
 import Queue
 import matplotlib.pyplot as plt
+import math
+from collections import deque
+
 
 class Service_Queue:
  
@@ -9,10 +12,32 @@ class Service_Queue:
     def __init__(self, size):
         self.q = Queue.Queue()
         self.queue_size = size
+        self.timer = 0
+        self.running = False
+        self.effective_packets = 10
+        self.request_arrival = deque()
     
     def add(self, requests):
-        if(self.q.qsize() < self.queue_size):
-            self.q.put(requests)
+        available_space = self.queue_size - self.q.qsize()
+        available_packets = available_space * self.effective_packets
+        
+        
+        
+        if(requests < available_packets):
+            space2use = math.ceil(requests/self.effective_packets)
+            packets = 0
+            mirror_time = self.timer
+            for slot in range(0, int(space2use)+1):
+                
+                packets += self.effective_packets
+                if(packets < requests):
+                     self.q.put(self.effective_packets)
+                else:
+                    self.q.put(packets - requests)
+                
+                print "Arrival time @ index: " , self.timer, " @ ", self.q.qsize()-1
+                self.request_arrival.append(self.timer)
+        
             return True
         else:
             return False
@@ -26,6 +51,7 @@ class Service_Queue:
 
     def view(self):
         print "QUEUE: ", list(self.q.queue)
+        print "ARRIVAL: ", list(self.request_arrival)
         #print(self.q.qsize())
         #plt.stem(list(self.q.queue))
         #plt.ylabel('Requests')
@@ -41,6 +67,39 @@ class Service_Queue:
 
     def count(self):
         return self.q.qsize()
+
+    def queue_list(self):
+        return list(self.q.queue)
+
+    def length(self):
+        return self.queue_size
+
+# packet details
+    def request_time(self, pop):
+        times = list(self.request_arrival)
+        if(len(times) > 0 and pop == True):
+            return self.request_arrival.popleft()
+        else:
+            return self.request_arrival[0]
+
+
+
+# Timer details
+    def increment_timer(self):
+        if(self.running == True):
+            self.timer += 1
+
+    def start_timer(self):
+        self.running = True
+
+    def is_running(self):
+        return self.running
+
+    def timer_value(self):
+        return self.timer
+
+    def reset_timer(self):
+        self.timer = 0
 
 
 

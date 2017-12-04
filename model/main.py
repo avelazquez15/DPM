@@ -2,17 +2,22 @@ import numpy as np
 import environment as en
 import dpm as manager
 from random import randrange
+import time
+from datetime import datetime, date, time
+
+print "\n" * 100
+print "\033[1m", "***NEW SIMULATION *** ", datetime.today(), "\033[0m"
 
 active  = 1
 idle    = 2
 sleep   = 3
 
-duration = 20
-queue_size = 3
+duration = 40
+queue_size = 10
 request_size = 10
 
-agent = manager.DPM()
 environment = en.environment(request_size, queue_size)
+agent = manager.DPM(environment)
 print 
 clk = 0
 while(1):
@@ -20,7 +25,6 @@ while(1):
     print "t[", clk, "]"
     environment.stimulate(clk)
     agent.stimulate(clk, environment)
-    environment.transition(clk)
     clk += 1
     
     print
