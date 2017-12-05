@@ -8,12 +8,12 @@ class Service_Provider:
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
-        self.transition_delay = {   "active2idle": 1,   \
-                                    "idle2active": 2,   \
-                                    "idle2sleep": 2,    \
-                                    "sleep2active": 6,  \
-                                    "active2active": 1, \
-                                    "sleep2sleep": 1}
+        self.transition_delay = {   "active2idle":      1,  \
+                                    "idle2active":      2,  \
+                                    "idle2sleep":       2,  \
+                                    "sleep2active":     6,  \
+                                    "active2active":    1,  \
+                                    "sleep2sleep":      1}
         
         
         
@@ -68,7 +68,7 @@ class Service_Provider:
     def set_cycle(self, value):
         self.cycle = value
 
-#duration
+# duration
     def get_duration(self):
         return self.duration
 

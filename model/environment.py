@@ -22,6 +22,7 @@ class environment:
         self.process_time = 1
         self.cost_init = 0
         self.cost_final = 0
+        self.under_N_poicy = False
     
         print "STATE Value Function: \n", self.state_value
     
@@ -141,21 +142,29 @@ class environment:
         return  -1*(a*self.delay_cost(state, direction) + (1-a)*self.power_cost(state))
 
     def delay_cost(self, state, direction):
-        if(state == self.sleep):
-            delay = (self.cost_final - self.cost_init)# + self.service_provider.get_transition_delay(direction)
-            A = 2
+        #and self.queue_count() > 0
         
-        elif(state == self.active and direction == "active2active"):
+        if(state == self.sleep  and self.under_N_poicy == True):     # Case 3 & 4
+            delay = (self.cost_final - self.cost_init)
+            A = 34
+        
+        elif(state == self.active):    # Case 5 & 6
             self.cost_init = self.service_queue.request_time()
             delay = (self.cost_final - self.cost_init)# + self.service_provider.get_transition_delay(direction)
-            A = 3
-        else:
+            A = 56
+                
+        elif(state == self.idle):               # Case 1 & 2
+            timeout = self.service_provider.get_cycle()
+            delay = timeout + self.service_provider.get_transition_delay(direction)
+            A = 12
+        
+        else:                                                           # Case 7
             delay = self.service_provider.get_transition_delay(direction)
-            A = 1
+            A = 7
         
 
         
-        print "[A:",A,"]","self.cost_final, self.cost_init, delay: ",self.cost_final, self.cost_init, delay
+        print "[A:",A,"]"," delay, final: ", delay, " , ", self.cost_final
         return delay + self.process_time
 
     def power_cost(self, state):
@@ -164,8 +173,6 @@ class environment:
         power = self.power_profile[self.state_str(state)]
         energy = power*cycle_duration
 
-#print "power_cost [cycle_duration, power] =", "[",cycle_duration, ",", power, "]"
-#print "energy: ", energy
 
         return energy
 

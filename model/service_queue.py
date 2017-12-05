@@ -22,8 +22,6 @@ class Service_Queue:
         available_space = self.queue_size - self.q.qsize()
         available_packets = available_space * self.effective_packets
         
-        
-        
         if(requests < available_packets):
             space2use = math.ceil(requests/self.effective_packets)
             packets = 0

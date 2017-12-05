@@ -25,7 +25,7 @@ class DPM:
         cycle = environment.service_provider.get_cycle()
         
         if(current_state == self.idle and queue_count == 0):
-            print "case 1:"
+            print "case 1: idle"
             
             timeout = environment.service_provider.get_time_out()
             duration = self.increment_duration(environment)
@@ -37,12 +37,13 @@ class DPM:
                 environment.transition_dir = "idle2sleep"
                 environment.service_provider.set_time_out(environment.current_action)
                 environment.service_provider.set_cycle(0)
-                #cycle = environment.service_provider.get_cycle()
-                print "environment.current_action = ", environment.current_action
+                print "selecting a tau policy ..."
+                #print "environment.current_action = ", environment.current_action
             
             elif( cycle == timeout):
                 #environment.service_provider.set_cycle(0)
                 #environment.service_provider.set_time_out(0)
+                print "timeout tau reached ... "
                 environment.transition_dir = "idle2sleep"
                 environment.transition(current_state)
             
@@ -50,11 +51,11 @@ class DPM:
                 cycle = self.increment_cycle(environment)
             
 
-            print "duration = ", duration, "cycle = ", cycle, "  timeout = ", timeout
+            print "In cycle ", cycle, "  waiting for timeout = ", timeout
 
 
         elif(current_state == self.idle and queue_count > 0):
-            print "case 2:"
+            print "case 2: going to active ... "
             timeout = environment.service_provider.get_time_out()
             environment.service_provider.set_cycle(0)
             cycle = environment.service_provider.get_cycle()
@@ -69,7 +70,7 @@ class DPM:
             environment.transition(current_state)
 
         elif((current_state == self.sleep and previous_state == self.idle) and queue_count > 0):
-            print "case 3: entering sleep"
+            print "case 3: entering sleep ... "
             #environment.service_provider.set_cycle(0)
             duration = self.increment_duration(environment)
             
@@ -77,6 +78,8 @@ class DPM:
             print "current state :", current_state , "[", environment.state_str(current_state), "]"
  
             print "[N-Policy, queue_count] " , "[",self.N, ",", environment.queue_count() ,"]"
+            
+            environment.under_N_poicy = True
             
             if(environment.cost_init == 0):
                 environment.cost_init = environment.service_queue.timer_value()
@@ -87,7 +90,7 @@ class DPM:
                     #self.preform_N_policy
         
         elif((current_state == self.sleep and previous_state == self.sleep )and queue_count > 0):
-            print "case 4: in sleep"
+            print "case 4: in sleep, but request in queue arrived ... "
             duration = self.increment_duration(environment)
             print "previous state :", previous_state , "[", environment.state_str(previous_state), "]"
             print "current state :", current_state , "[", environment.state_str(current_state), "]"
@@ -102,7 +105,8 @@ class DPM:
             
             environment.cost_final = environment.service_queue.timer_value() + 1
             environment.evaluate_cost(current_state)
-
+            
+            environment.under_N_poicy = True
 
             if(environment.queue_count() >= self.N):
                 #self.wait_debug(".......... case 4 ..........")
@@ -110,27 +114,29 @@ class DPM:
 
 
         elif(current_state == self.active and queue_count == 0):
-            print "case 5"
+            print "case 5: going to idle ... "
 
 
             environment.service_provider.set_cycle(0)
-            cycle = environment.service_provider.get_cycle()
+            #cycle = environment.service_provider.get_cycle()
             duration = self.increment_duration(environment)
-            timeout = environment.service_provider.get_time_out()
+            #timeout = environment.service_provider.get_time_out()
             
-            print "duration = ", duration, "cycle = ", cycle, "  timeout = ", timeout
-
+            # print "duration = ", duration, "cycle = ", cycle, "  timeout = ", timeout
+            environment.cost_final = environment.service_queue.timer_value() + 1
             environment.view_queue()
             environment.current_action = self.random_active2idle()
             environment.transition_dir = "active2idle"
             environment.transition(current_state)
 
         elif(current_state == self.active and queue_count > 0):
-            print "case 6"
+            print "case 6: staying in active ..."
 
 
             if(environment.cost_init == 0):
                 environment.cost_init = environment.service_queue.timer_value()
+        
+            environment.cost_final = environment.service_queue.timer_value() + 1
         
             duration = self.increment_duration(environment)
             environment.view_queue()
@@ -139,13 +145,17 @@ class DPM:
             environment.transition(current_state)
 
         elif(current_state == self.sleep and queue_count == 0):
-            print "case 7"
+            print "case 7: staying in sleep ..."
             print "previous state :", previous_state , "[", environment.state_str(previous_state), "]"
             print "current state :", current_state , "[", environment.state_str(current_state), "]"
+            
+            
+            environment.under_N_poicy = False
             
             if(previous_state == self.idle):
                 environment.service_provider.set_duration(0)
 
+            environment.cost_final = environment.service_queue.timer_value() + 1
         
             duration = self.increment_duration(environment)
             environment.view_queue()
@@ -155,7 +165,7 @@ class DPM:
 
 
 
-        print "queue_timer: [", environment.service_queue.timer_value() , "]"
+        #print "queue_timer: [", environment.service_queue.timer_value() , "]"
     
 
     def stimulate(self, clk, environment):
