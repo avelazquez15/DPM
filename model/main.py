@@ -15,8 +15,11 @@ sleep   = 3
 duration = 40
 queue_size = 10
 request_size = 10
+episodes = 5
+requests_per_episode = 5
 
-environment = en.environment(request_size, queue_size)
+
+environment = en.environment(request_size, queue_size, requests_per_episode)
 agent = manager.DPM(environment)
 print 
 clk = 0
@@ -34,6 +37,10 @@ while(1):
 
     
     if(clk == duration+1):
+        #print "\n\n\nTransition History: count = ", len(environment.human_history), "\n", environment.human_history
+        
+        #print "\n\n\nRewards History: count = ", len(environment.rewards),  "\n", environment.rewards
+        print environment.show_transition()
         break
 
 #environment.view_queue()
@@ -43,4 +50,6 @@ while(1):
     #print "queue[",i,"] = ", agent.service_queue.get()
 #i += 1
 
-print "done"
+
+
+print "\n\n\n**DONE**"

@@ -57,12 +57,17 @@ class Service_Queue:
         #plt.xlabel('queue index')
         #plt.show()
 
+    def request_arrival_count(self):
+        return len(list(self.request_arrival))
 
     def is_empty(self):
         return self.q.empty()
 
-    def queue(self):
-        return self.q
+    def view_queue(self):
+        return list(self.q.queue)
+    
+    def view_request_arrival(self):
+        return list(self.request_arrival)
 
     def count(self):
         return self.q.qsize()

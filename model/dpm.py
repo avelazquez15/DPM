@@ -18,6 +18,7 @@ class DPM:
         self.N = self.randomN()
 
 
+
     def take_action(self, environment):
         queue_count     = environment.queue_count()
         current_state   = environment.current_state()
@@ -94,7 +95,7 @@ class DPM:
             duration = self.increment_duration(environment)
             print "previous state :", previous_state , "[", environment.state_str(previous_state), "]"
             print "current state :", current_state , "[", environment.state_str(current_state), "]"
-            environment.service_queue.view()
+            #environment.service_queue.view()
             print "[N-Policy, queue_count] " , "[",self.N, ",", environment.queue_count() ,"]"
             
             
@@ -104,13 +105,15 @@ class DPM:
             #self.wait_debug(message)
             
             environment.cost_final = environment.service_queue.timer_value() + 1
-            environment.evaluate_cost(current_state)
+
             
             environment.under_N_poicy = True
 
             if(environment.queue_count() >= self.N):
-                #self.wait_debug(".......... case 4 ..........")
+                
                 self.preform_N_policy(environment, current_state)
+            else:
+                environment.evaluate_cost(current_state, False)
 
 
         elif(current_state == self.active and queue_count == 0):
@@ -124,7 +127,7 @@ class DPM:
             
             # print "duration = ", duration, "cycle = ", cycle, "  timeout = ", timeout
             environment.cost_final = environment.service_queue.timer_value() + 1
-            environment.view_queue()
+            #environment.view_queue()
             environment.current_action = self.random_active2idle()
             environment.transition_dir = "active2idle"
             environment.transition(current_state)
@@ -137,12 +140,15 @@ class DPM:
                 environment.cost_init = environment.service_queue.timer_value()
         
             environment.cost_final = environment.service_queue.timer_value() + 1
-        
+            
             duration = self.increment_duration(environment)
-            environment.view_queue()
+            #environment.view_queue()
+
             environment.current_action = self.random_active2idle()
             environment.transition_dir = "active2active"
             environment.transition(current_state)
+            environment.check_queue()
+            environment.view_status()
 
         elif(current_state == self.sleep and queue_count == 0):
             print "case 7: staying in sleep ..."

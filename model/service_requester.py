@@ -15,7 +15,7 @@ class Service_Requester:
             internal_clk += 1
         self.inter_arrival = list(set(self.inter_arrival))
         self.inter_arrival = sorted(self.inter_arrival)
-        self.inter_arrival = [13, 14, 15, 23]
+        #self.inter_arrival = [13, 14, 15]
         print "self.inter_arrival \n", self.inter_arrival
 
 
