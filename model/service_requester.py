@@ -19,7 +19,7 @@ class Service_Requester:
         #self.inter_arrival = list(set(self.inter_arrival))
         #self.inter_arrival = sorted(self.inter_arrival)
         self.inter_arrival = self.generate_number(size)
-        print "self.inter_arrival \n", self.inter_arrival
+#print "self.inter_arrival \n", self.inter_arrival
 
 
     def inter_arrivals(self):

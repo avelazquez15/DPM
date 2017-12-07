@@ -16,6 +16,7 @@ class DPM:
         print "N-Policy", self.Ns
         self.wait_debug("wait...")
         self.N = self.randomN()
+        environment.setup(len(self.tau ), len(self.Ns))
 
 
 

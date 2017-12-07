@@ -15,7 +15,7 @@ sleep   = 3
 duration = 100000
 queue_size = 20
 requester_length = duration
-episodes = 100
+episodes = 4
 requests_per_episode = 10
 
 
