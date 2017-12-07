@@ -7,21 +7,21 @@ import termios, fcntl, sys, os
 
 class environment:
     
-    def __init__(self, request_size, queue_size, requests_per_episode):
+    def __init__(self, request_size, queue_size, requests_per_episode, episodes):
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
         self.gamma = 0.8
         self.requests_per_episode = requests_per_episode
-        self.service_provider = sp.Service_Provider(self.idle)
+        self.service_provider = sp.Service_Provider(self.sleep)
         self.service_requester = sr.Service_Requester(request_size)
         self.service_queue = q.Service_Queue(queue_size)
         self.snapshot = np.zeros(6)
         self.current_action = -1
         self.transition_dir = ""
         self.power_profile = {"active": 1, "idle" : 0.80, "sleep": 0.1}     # mW
-        self.state_value = np.zeros((3,queue_size))
-        self.i_rewards = np.zeros((3,queue_size))
+        self.state_value = np.zeros((3,queue_size+1))
+        self.i_rewards = np.zeros((3,queue_size+1))
         self.process_time = 1
         self.cost_init = 0
         self.cost_final = 0
@@ -32,6 +32,8 @@ class environment:
         self.returns = []
         self.requests_processed = 0
         self.active_process = 0
+        self.current_episode = 1
+        self.Max_Episode = episodes
 
         print "instant rewards : \n", self.i_rewards
     
@@ -159,12 +161,19 @@ class environment:
             #self.check_queue()
 
             if(self.requests_processed == self.requests_per_episode):
-                #print "\n\n\nTransition History: count = ", len(self.human_history), "\n", self.human_history
+                print "\n\n\nTransition History: count = ", len(self.human_history), "\n", self.human_history
                     
-                #print "\n\n\nRewards History: count = ", len(self.rewards),  "\n", self.rewards
+                print "\n\n\nRewards History: count = ", len(self.rewards),  "\n", self.rewards
 
                 self.evaluate_returns()
-                self.wait_debug("episode DONE")
+                self.requests_processed = 0
+                if(self.current_episode == self.Max_Episode):
+                    
+
+                    message = "Episode", self.current_episode,
+                    self.wait_debug(message)
+
+                self.current_episode += 1
         else:
             self.evaluate_cost(current_state, False)
 
@@ -187,8 +196,17 @@ class environment:
     
 # cost function value details
     def cost(self, state, direction):
-        a = 0.9
-        return  -1*(a*self.delay_cost(state, direction) + (1-a)*self.power_cost(state))
+        a = 0.45
+        cost_value = self.delay_cost(state, direction)
+        energy_value = self.power_cost(state)
+        
+        print "cost_value: ", cost_value
+        print "a*cost_value", a*cost_value
+        
+        print
+        print "energy_value: ", energy_value
+        print "(1-a)*energy_value: ", (1-a)*energy_value
+        return  -1*(a*cost_value + (1-a)*energy_value)
 
     def delay_cost(self, state, direction):
         if(state == self.sleep  and self.under_N_poicy == True):     # Case 3 & 4
@@ -211,13 +229,15 @@ class environment:
             A = 57
 
         print "[A:",A,"]"," delay, final: ", delay, " , ", self.cost_final
-        #self.view_queue()
+
         return delay + self.process_time
 
     def power_cost(self, state):
         cycle_duration = self.service_provider.get_duration()
         power = self.power_profile[self.state_str(state)]
         energy = power*cycle_duration
+        
+        print "cycle_duration: ", cycle_duration
         
         return energy
 
@@ -252,15 +272,22 @@ class environment:
         index = 0
         for state in self.transition_history:
             Gt = self.returns[index]
-            if(self.is_sv_updated(state) == 0):
-                self.update_state_value(state, Gt)
+                #if(self.is_sv_updated(state) == 0):
+            self.update_state_value(state, Gt)
             index += 1
+        
+        if(self.current_episode == self.Max_Episode):
+            sv = list([i/self.Max_Episode for i in self.state_value])
+            print "\n\n\n State Values:\n", sv
+        
 
-        print "\n\n\n State Values:\n", self.state_value
-        self.wait_debug("wating ...")
+        self.returns = []
+        self.rewards = []
+        self.transition_history = []
+        self.human_history = []
             
     def update_state_value(self, state, value):
-        self.state_value[state] = value
+        self.state_value[state] += float(str(round(value, 2)))
     
     def is_sv_updated(self, state):
         return  self.state_value[state]
@@ -276,6 +303,7 @@ class environment:
         n = 0
         size = len(self.human_history)
         
+        print "show_transition(self) {size}: ", size
         while(n < size-1):
             print self.human_history[n], "{Gt:", self.returns[n], "}",\
                 "->", self.human_history[n+1],"{Gt:", self.returns[n+1], "}", "\n"

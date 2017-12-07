@@ -10,7 +10,7 @@ class DPM:
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
-        self.tau = [5, 2, 3, 7]
+        self.tau = [1,3,5,7,10,12,14,16,20]
         #self.Ns = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         self.Ns =  np.arange(0, environment.queue_len())
         print "N-Policy", self.Ns
@@ -84,7 +84,7 @@ class DPM:
             
             if(environment.cost_init == 0):
                 environment.cost_init = environment.service_queue.timer_value()
-                self.wait_debug(".......... case 3 ..........")
+                #self.wait_debug(".......... case 3 ..........")
             
             #if(environment.queue_count() >= self.N):
             #self.wait_debug(".......... case 3 ..........")
@@ -182,15 +182,15 @@ class DPM:
 
     def random_tau_action(self):
         action = randrange(0, len(self.tau))
-        return 4# self.tau[action]
+        return self.tau[action]
 
     def random_idel2active(self):
         action =  randrange(0, 1)
         return action
 
     def randomN(self):
-        action = randrange(1, len(self.Ns))
-        return 4 #self.Ns[action]
+        action = randrange(0, len(self.Ns))
+        return self.Ns[action]
 
 
     def random_active2idle(self):

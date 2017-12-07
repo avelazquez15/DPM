@@ -1,21 +1,24 @@
 import numpy as np
 from random import randrange
+import random
 import matplotlib.pyplot as plt
+import math
+
 
 class Service_Requester:
   
     def __init__(self, size):
 
-        self.inter_arrival = np.ones(size)
+        self.inter_arrival =  np.ones(size)
         request_size = 0.7*size#randrange(size)
         
         internal_clk  = 1
         while(internal_clk < request_size):
             self.inter_arrival[internal_clk] = internal_clk + randrange(request_size)
             internal_clk += 1
-        self.inter_arrival = list(set(self.inter_arrival))
-        self.inter_arrival = sorted(self.inter_arrival)
-        #self.inter_arrival = [13, 14, 15]
+        #self.inter_arrival = list(set(self.inter_arrival))
+        #self.inter_arrival = sorted(self.inter_arrival)
+        self.inter_arrival = self.generate_number(size)
         print "self.inter_arrival \n", self.inter_arrival
 
 
@@ -26,10 +29,22 @@ class Service_Requester:
         return value in self.inter_arrival
 
     def request_count(self):
-        return randrange(1, 21)
+        return randrange(1, 10)
 
     def view(self):
         plt.stem( self.inter_arrival)
         plt.ylabel('Inter Arrival Time')
         plt.xlabel('global clock')
         plt.show()
+
+
+    def generate_number(self, size):
+        x = []
+        n = 0
+        
+        while(n < size/25):
+            n += 1
+            num = np.random.randint(0, size)
+            x.append(num)
+
+        return sorted(set(x))
