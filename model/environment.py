@@ -4,6 +4,7 @@ import service_provider as sp
 import service_requester as sr
 from random import randrange
 import termios, fcntl, sys, os
+import math
 
 class environment:
     
@@ -23,7 +24,10 @@ class environment:
         self.idle    = 2
         self.sleep   = 3
         self.gamma = 0.8
-        
+        self.case_number = 0
+        self.defualt_reward = -2000
+        self.valid_state_action = False
+        self.valid_state_value = False
         
         # SQ, SP, SR
         queue_size = queue_size + 1
@@ -53,10 +57,12 @@ class environment:
         
         # returns
         self.returns = []
+        self.tau_state_action_returns = []
+        self.n_state_action_returns = []
         
         
         # state-value and state-action functions (tau and N-Policy)
-        self.state_value = np.ones((3,queue_size))*-1000
+        self.state_value = np.ones((3,queue_size))*self.defualt_reward
         self.tau_state_action_values = []
         self.n_state_action_values = []
 
@@ -99,12 +105,12 @@ class environment:
         # Case 1 & 2 (Tau Policy)
         # shape = (depth, rows, columns)
         shape = (tau_state_action_len, self.service_queue.queue_size)
-        self.tau_state_action_values = np.ones(shape)*-1000
+        self.tau_state_action_values = np.ones(shape)*self.defualt_reward
 
         # Case 3 & 4 (N-Policy)
         # shape = (depth, rows, columns)
         shape = (n_state_action_len, self.service_queue.queue_size)
-        self.n_state_action_values = np.ones(shape)*-1000
+        self.n_state_action_values = np.ones(shape)*self.defualt_reward
     
     
 # state details/history
@@ -131,7 +137,7 @@ class environment:
     
     def change_state(self, state):
         self.service_provider.set_state(state)
-
+    
     def state_str(self, state):
         if(state == 1):
             return "active"
@@ -153,26 +159,16 @@ class environment:
 
 # Agent/Evironment interaction
     def transition(self, current_state):
-
         self.service_provider.transition_period += 1
         delay = self.service_provider.get_transition_delay(self.transition_dir)
         print "self.service_provider.transition_period = ", self.service_provider.transition_period
         
+        self.store_state_action_pair(current_state)
+        self.store_state_value_pair(current_state)
+        
         # transition delay complete
         if(self.service_provider.transition_period == delay):
             self.service_provider.transition_period = 0
-            
-            # human readable transition
-            transition = ([self.state_str(current_state)],[self.queue_count()])
-            self.human_history.append(transition)
-            
-            # environment transition history
-            transition = ([current_state-1],[self.queue_count()])
-            self.state_value_transitions.append(transition)
-            
-            state_action = ([current_state-1],[self.queue_count()])
-            self.self.state_action_transitions.append(state_action)
-
             
             # evaluate cost for (current_state,SQ.count) pair
             self.evaluate_cost(current_state, True)
@@ -189,46 +185,72 @@ class environment:
             self.change_state(new_state)
             
             
-            
             # check for a completion of an episode
             if(self.requests_processed == self.requests_per_episode):
-                print "\n\n\nTransition History: count = ", len(self.human_history), "\n", self.human_history
+                print "\n\n\nTransition History: count = ", len(self.state_value_transitions), "\n", self.state_value_transitions
                     
                 print "\n\n\nRewards History: count = ", len(self.rewards),  "\n", self.rewards
 
                 self.evaluate_returns()
                 self.requests_processed = 0
                 if(self.current_episode == self.Max_Episode):
-                    
-
                     message = "Episode", self.current_episode,
                     self.wait_debug(message)
 
                 self.current_episode += 1
         else:
-            self.evaluate_cost(current_state, False)
+            self.evaluate_cost(current_state, True)
 
 
     def change_transition_delay(self, state, value):
         #print "change_transition_delay [state, value] =", "[",state, ",", value, "]"
         self.service_provider.set_transition_delay(state, value)
 
-    def evaluate_transition(self):
-        cost = self.cost(self.current_state(), self.transition_dir)
-        self.update_i_rewards(self.current_state(), self.queue_count(), cost)
+    def store_state_action_pair(self, current_state):
+        # state-action transition history
+        #({SP state, SQ count}, action taken)
+        state = self.service_provider.get_transition(self.transition_dir)
+        transition = ([self.state_str(state)],    \
+                      [self.queue_count()], \
+                      [self.current_action])
+        if(self.is_state_action_allowed(transition)):
+            self.state_action_transitions.append(transition)
+
+    def store_state_value_pair(self, current_state):
+        # environment transition history
+        transition = ([current_state-1],[self.queue_count()])
+        if(self.is_state_value_allowed(transition)):
+            self.state_value_transitions.append(transition)
+            # human readable transition
+            transition = ([self.state_str(current_state)],[self.queue_count()])
+            self.human_history.append(transition)
     
 #evaluate cost function
     def evaluate_cost(self, current_state, valid_transition):
         cost = self.cost(current_state, self.transition_dir)
+        cost = float(str(round(cost, 2)))
         self.update_i_rewards(current_state, self.queue_count(), cost)
     
-        if(valid_transition):
-            self.rewards.append(cost)
+        print self.state_action_transitions
+
+        if(self.valid_state_action):
             self.state_action_rewards.append(cost)
+            self.valid_state_action = False
+        #print "state_action_rewards ",  self.state_action_rewards
+        #self.wait_debug("storing rewards ... ")
+        else:
+            index = len(self.state_action_rewards) - 1
+            self.state_action_rewards[index] = cost
+    
+        if(self.valid_state_value):
+            self.rewards.append(cost)
+        else:
+            index = len(self.rewards) - 1
+            self.rewards[index] = cost
     
 # cost function value details
     def cost(self, state, direction):
-        a = 0.45
+        a = 0.3
         cost_value = self.delay_cost(state, direction)
         energy_value = self.power_cost(state)
         
@@ -238,6 +260,7 @@ class environment:
         print
         print "energy_value: ", energy_value
         print "(1-a)*energy_value: ", (1-a)*energy_value
+        #self.wait_debug("cost ... ")
         return  -1*(a*cost_value + (1-a)*energy_value)
 
     def delay_cost(self, state, direction):
@@ -262,15 +285,42 @@ class environment:
 
         print "[A:",A,"]"," delay, final: ", delay, " , ", self.cost_final
 
-        return delay + self.process_time
+        return math.pow(delay, 1.5)+ self.process_time
 
     def power_cost(self, state):
-        cycle_duration = self.service_provider.get_duration()
+        if(state == self.sleep  and self.under_N_poicy == True):     # Case 3 & 4
+            #delay = (self.cost_final - self.cost_init)
+            A = 34
+        
+        elif(state == self.active and self.service_queue.request_arrival_count() > 0):    # Case 6
+            #self.cost_init = self.service_queue.request_time()
+            #delay = (self.cost_final - self.cost_init)
+            #self.requests_processed += 1
+            A = 6
+        
+        elif(state == self.idle):               # Case 1 & 2
+            #timeout = self.service_provider.get_cycle()
+            #delay = timeout + self.service_provider.get_transition_delay(direction)
+            A = 12
+        
+        else:                                                           # Case 5 & 7
+            #delay = self.service_provider.get_transition_delay(direction)
+            A = 57
+
+        if(self.service_provider.transition_period > 0):
+            cycle_duration = self.service_provider.transition_period
+        else:
+            cycle_duration = self.service_provider.get_duration()
+
+        state = self.service_provider.get_transition(self.transition_dir)
         power = self.power_profile[self.state_str(state)]
         energy = power*cycle_duration
         
+        print "state: ", self.state_str(state)
+        print "power: ", power
         print "cycle_duration: ", cycle_duration
-        
+        print "energy: ", energy
+        #self.wait_debug("calcualting energy ... ")
         return energy
     
 # Evaluation of Rewards, Returns, State-Value Function, and State-Action-Value Details
@@ -285,20 +335,23 @@ class environment:
     def evaluate_returns(self):
         
         self.evaluate_state_values()
-
+        #self.evaluate_state_action_values()
+        #self.evaluate_n_state_action_values()
         
         self.total_rewards = sum(self.rewards)
         
         if(self.current_episode == self.Max_Episode):
             sv = list([i/self.Max_Episode for i in self.state_value])
-            print "\n\n\n State Values:\n", sv
-            print "total_rewards = ", self.total_rewards
+            self.show_transition()
+            #print "\n\n\n State Values:\n", sv
+            #print "total_rewards = ", self.total_rewards
         
 
         self.returns = []
         self.rewards = []
         self.state_value_transitions = []
         self.human_history = []
+    
     
     def evaluate_state_values(self):
         g = self.gamma
@@ -311,10 +364,12 @@ class environment:
         while(n >= 0):
             n -= 1
             Rn = self.rewards[n]
-            self.returns.insert(0, Rn + g* Gn)
+            return_value = Rn + g* Gn
+            return_value = float(str(round(return_value, 2)))
+            self.returns.insert(0, return_value)
             Gn = Rn
         
-        print "\n\nReturns:\n", self.returns
+        #print "\n\nReturns:\n", self.state_action_rewards
         #self.update_return(state,  Rn + g* Gn)
         print
         #self.show_transition()
@@ -322,11 +377,26 @@ class environment:
         index = 0
         for state in self.state_value_transitions:
             Gt = self.returns[index]
-            if(self.is_sv_updated(state) == -1000):
+            if(self.is_sv_updated(state) == self.defualt_reward):
                 self.update_state_value(state, Gt)
             index += 1
 
-
+    def evaluate_state_action_values(self):
+        g = self.gamma
+        size = len(self.state_action_transitions)
+        n = size - 1
+        state = self.state_value_transitions[n]
+        Rn = self.rewards[n]
+        Gn = Rn
+        
+        while(n >= 0):
+            n -= 1
+            Rn = self.rewards[n]
+            return_value = Rn + g* Gn
+            return_value = float(str(round(return_value, 2)))
+            self.returns.insert(0, return_value)
+            Gn = Rn
+    
     def update_state_value(self, state, value):
         self.state_value[state] = float(str(round(value, 2)))
     
@@ -334,9 +404,49 @@ class environment:
         return  self.state_value[state]
     
     
-    #def evaluate_state_actions(self):
+    def is_tau_sv_updated(self, state):
+        return  self.tau_state_action_values[state]
     
     
+    def is_n_sv_updated(self, state):
+        return  self.n_state_action_values[state]
+
+    def is_state_action_allowed(self, state_action_pair):
+        current_length = len(self.state_action_transitions)
+        current_index = current_length - 1
+        try:
+            state_action_index = self.state_action_transitions.index(state_action_pair)
+                
+            if(current_index == state_action_index):
+                self.valid_state_action = False
+                return self.valid_state_action
+
+            else:
+                self.valid_state_action = True
+                return self.valid_state_action
+                    
+        except ValueError:
+                self.valid_state_action = True
+                return self.valid_state_action
+
+    def is_state_value_allowed(self, state_value_pair):
+        current_length = len(self.state_value_transitions)
+        current_index = current_length - 1
+        try:
+            state_value_index = self.state_value_transitions.index(state_value_pair)
+            
+            if(current_index == state_value_index):
+                self.valid_state_value = False
+                return self.valid_state_value
+            
+            else:
+                self.valid_state_value = True
+                return self.valid_state_value
+
+        except ValueError:
+            self.valid_state_value = True
+            return self.valid_state_value
+
 # debugging
     def wait_debug(self, message):
         print "[DEBUG] ", message
@@ -345,16 +455,32 @@ class environment:
 
     def show_transition(self):
         n = 0
-        size = len(self.human_history)
+        size = len(self.state_value_transitions)
         
-        print "show_transition(self) {size}: ", size
+        print "state_value_transitions(self) {size}: ", size
         while(n < size-1):
-            print self.human_history[n], "{Gt:", self.returns[n], "}",\
-                "->", self.human_history[n+1],"{Gt:", self.returns[n+1], "}", "\n"
+            print self.human_history[n], "{Rt:", self.rewards[n], "}",\
+                "->", self.human_history[n+1],"{Rt:", self.rewards[n+1], "}", "\n"
             n += 2
 
         if(size % 2 != 0):
-            print self.human_history[n],"{Gt:", self.returns[n], "}\n\n",
+            print self.human_history[n],"{Rt:", self.rewards[n], "}\n\n",
+
+
+        n = 0
+        size = len(self.state_action_transitions)
+    
+        print "state_action_transitions(self) {size}: ", size
+        while(n < size-1):
+            print self.state_action_transitions[n], "{Rt:", self.state_action_rewards[n], "}",\
+            "->", self.state_action_transitions[n+1],"{Rt:", self.state_action_rewards[n+1], "}", "\n"
+            n += 2
+
+        if(size % 2 != 0):
+            print self.state_action_transitions[n],"{Rt:", self.state_action_rewards[n], "}\n\n",
+
+
+
 
 
 

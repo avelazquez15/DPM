@@ -8,18 +8,9 @@ import math
 class Service_Requester:
   
     def __init__(self, size):
+        self.file_name =  "inter_arrival_time.csv"
 
-        self.inter_arrival =  np.ones(size)
-        request_size = 0.7*size#randrange(size)
-        
-        internal_clk  = 1
-        while(internal_clk < request_size):
-            self.inter_arrival[internal_clk] = internal_clk + randrange(request_size)
-            internal_clk += 1
-        #self.inter_arrival = list(set(self.inter_arrival))
-        #self.inter_arrival = sorted(self.inter_arrival)
-        self.inter_arrival = self.generate_number(size)
-#print "self.inter_arrival \n", self.inter_arrival
+        self.inter_arrival = self.read_file(self.file_name)
 
 
     def inter_arrivals(self):
@@ -37,6 +28,13 @@ class Service_Requester:
         plt.xlabel('global clock')
         plt.show()
 
+    def read_file(self, file_name):
+        x = []
+        with open(file_name, 'rb') as f:
+            for line in f:
+                x.append(int(line))
+
+        return x
 
     def generate_number(self, size):
         x = []

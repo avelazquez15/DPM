@@ -6,46 +6,66 @@ import Queue
 import matplotlib.pyplot as plt
 import math
 from collections import deque
-
-rewards = []
-returns = np.ones((5,3,10))*-1000
-
-active = 1
-idle = 2
-sleep = 3
-
-#i_rewards[0][idle-1][0] = -2.9
-
-#i_rewards[0][idle-1][1] = -3.4
-
-#i_rewards[0][active-1][1] = -1.3
-
-#print i_rewards
+import matplotlib.pyplot as plt
 
 
 
-transitions = []
+def generate_number(size):
+    x = []
+    n = 0
+    
+    data_points = size/25
+    y = 0
+    while(n < data_points):
+        n += 1
+        num = np.random.randint(0, size)
+        if(n >= 20 and n <= 100):
+            # do nothing
+            y += 1
+        else:
+            x.append(num)
+    
+    return sorted(set(x))
 
-action1 = 2 #tau
-state1 = ([action1], [idle-1],[0])
-transitions.append(state1)
-#rewards.append(i_rewards[state1])
+def write2file(data, file_name):
+    f = open(file_name,"w")
+    n = 0
+    while(n < len(data)):
+        f.write("{:03d}\n".format(data[n]))
+        n += 1
+    
+    f.close()
 
-state2 = ([action1],[idle-1],[1])
-transitions.append(state2)
-#rewards.append(i_rewards[state2])
+def read_file(file_name):
+    x = []
+    with open(file_name, 'rb') as f:
+        for line in f:
+            x.append(int(line))
 
-action3 = 3
-state3 = ([action3],[active-1],[1])
-transitions.append(state3)
-#rewards.append(i_rewards[state3])
-
-
-returns[state3] = 500
-
-print "\n ", transitions
+    return x
 
 
+def is_transition_allowed(state_action_transitions, state_action_pair):
+    current_length = len(state_action_transitions)
+    
+    if(current_length > 1):
+        current_index = current_length - 1
+        try:
+            state_action_index = state_action_transitions.index(state_action_pair)
+            if(current_index == state_action_index):
+                return False
+            else:
+                return True
+        except ValueError:
+            return True
 
-print "\n ", returns
 
+
+
+
+
+state_action_transitions = [1,2,3,4,5,6]
+
+
+
+print is_transition_allowed(state_action_transitions, 7)

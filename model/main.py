@@ -13,10 +13,10 @@ idle    = 2
 sleep   = 3
 
 duration = 100000
-queue_size = 20
+queue_size = 10
 requester_length = duration
-episodes = 4
-requests_per_episode = 10
+episodes = 1
+requests_per_episode = 6
 
 
 environment = en.environment(requester_length, queue_size, requests_per_episode, episodes)
