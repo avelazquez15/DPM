@@ -60,12 +60,21 @@ def is_transition_allowed(state_action_transitions, state_action_pair):
             return True
 
 
+tau_q_value = np.zeros((5,5))
+
+tau_q_value[2][0] = 10
+
+print tau_q_value
+
+values = [row[0] for row in tau_q_value]
 
 
+print values
+              
+              
+              
+              
+              
+              
+              
 
-
-state_action_transitions = [1,2,3,4,5,6]
-
-
-
-print is_transition_allowed(state_action_transitions, 7)

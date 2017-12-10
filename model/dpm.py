@@ -6,18 +6,20 @@ import termios, fcntl, sys, os
 class DPM:
 
     
-    def __init__(self, environment):
+    def __init__(self, environment, epsilon):
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
-        self.tau = [1,3,5,7,10,12,14,16,20]
+        self.taus = [1,2,3,4,5] #3,5,7,10,12,14,16,20
         #self.Ns = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        self.Ns =  list(np.arange(0, environment.queue_len()))
+        self.Ns =  list(np.arange(0, environment.queue_len()-1))
         print "N-Policy", self.Ns
         self.wait_debug("wait...")
-        self.N = self.select_nPolicy()
-        environment.setup(len(self.tau ), len(self.Ns))
+        self.tau = 0
+        environment.setup(len(self.taus)+1, len(self.Ns)+1)
         self.action = 0
+        self.epsilon = epsilon
+        self.N = self.select_nPolicy(environment)
 
 
 
@@ -39,8 +41,9 @@ class DPM:
                 environment.view_queue()
                 
                 # select tau action from Policy
-                action = self.select_tauPolicy()
-                environment.current_action = self.tau.index(action)
+                action = self.select_tauPolicy(environment)
+                self.tau = self.taus.index(action)
+                environment.current_action = self.tau
                 environment.case_number = 1
                 
                 # set transition properties
@@ -52,11 +55,13 @@ class DPM:
             elif( cycle == timeout):
                 print "timeout tau reached ... "
 
+                environment.current_action = self.tau
                 environment.transition_dir = "idle2sleep"
                 environment.case_number = 1
                 environment.transition(current_state)
             
             else:
+                environment.current_action = self.tau
                 cycle = self.increment_cycle(environment)
 
             print "In cycle ", cycle, "  waiting for timeout = ", timeout
@@ -71,6 +76,7 @@ class DPM:
 
             cycle = self.increment_cycle(environment)
             environment.view_queue()
+            environment.current_action = self.tau
             environment.transition_dir = "idle2active"
             environment.case_number = 1
             environment.transition(current_state)
@@ -83,7 +89,7 @@ class DPM:
             environment.under_N_poicy = True
             
             # just about to enter sleep state -> select an N Policy
-            self.N = self.select_nPolicy()
+            self.N = self.select_nPolicy(environment)
             environment.current_action = self.Ns.index(self.N)
             environment.case_number = 2
             
@@ -134,7 +140,7 @@ class DPM:
             environment.cost_final = environment.service_queue.timer_value() + 1
             duration = self.increment_duration(environment)
 
-            environment.current_action = self.random_active2idle()
+            environment.current_action = 100#self.random_active2idle()
             environment.transition_dir = "active2active"
             environment.case_number = 0
             environment.transition(current_state)
@@ -153,7 +159,7 @@ class DPM:
         
             duration = self.increment_duration(environment)
             environment.view_queue()
-            environment.current_action = self.random_active2idle()
+            environment.current_action = self.Ns.index(self.N)#self.random_active2idle()
             environment.transition_dir = "sleep2sleep"
             environment.case_number = 2
             environment.transition(current_state)
@@ -164,26 +170,41 @@ class DPM:
         self.take_action(environment)
 
 
-    def select_tauPolicy(self):
-        
-        #Epsilon Policy
+    def select_tauPolicy(self, environment):
+        policy_type = np.random.binomial(1, self.epsilon)
+                    
+        #greedy-Epsilon Policy
+        if(policy_type == 1):
+            q_values = environment.get_tau_q_values()
+            column_0 = [row[0] for row in q_values]
+            max_action = max(column_0)
+            action = column_0.index(max_action)
         
         #Random Policy
-        action = randrange(0, len(self.tau))
+        else:
+            action = randrange(0, len(self.taus))
         
         # return Policy
-        return self.tau[action]
+        return self.taus[action]
  
 
     def random_idel2active(self):
         action =  randrange(0, 1)
         return action
 
-    def select_nPolicy(self):
-        # epsilon
-        
-        #random
-        action = randrange(0, len(self.Ns))
+    def select_nPolicy(self, environment):
+        policy_type = np.random.binomial(1, self.epsilon)
+                    
+        #greedy-Epsilon Policy
+        if(policy_type == 1):
+            q_values = environment.get_n_q_values()
+            column_0 = [row[0] for row in q_values]
+            max_action = max(column_0)
+            action = column_0.index(max_action)
+
+        #Random Policy
+        else:
+            action = randrange(0, len(self.Ns))
         
         # return Policy
         return action

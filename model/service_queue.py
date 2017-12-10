@@ -70,7 +70,10 @@ class Service_Queue:
         return list(self.request_arrival)
 
     def count(self):
-        return self.q.qsize()-1
+        if(self.q.qsize() > 0):
+            return self.q.qsize()
+        else:
+            return 0
 
     def queue_list(self):
         return list(self.q.queue)

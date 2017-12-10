@@ -25,12 +25,12 @@ class environment:
         self.sleep   = 3
         self.gamma = 0.8
         self.case_number = 0
-        self.defualt_reward = -2000
+        self.defualt_reward = 0
         self.valid_state_action = False
         self.valid_state_value = False
         
         # SQ, SP, SR
-        queue_size = queue_size + 1
+        queue_size = queue_size + 2
         self.requests_per_episode = requests_per_episode
         self.service_provider = sp.Service_Provider(self.sleep)
         self.service_requester = sr.Service_Requester(request_size)
@@ -57,8 +57,7 @@ class environment:
         
         # returns
         self.returns = []
-        self.tau_state_action_returns = []
-        self.n_state_action_returns = []
+        self.state_action_returns = []
         
         
         # state-value and state-action functions (tau and N-Policy)
@@ -187,9 +186,9 @@ class environment:
             
             # check for a completion of an episode
             if(self.requests_processed == self.requests_per_episode):
-                print "\n\n\nTransition History: count = ", len(self.state_value_transitions), "\n", self.state_value_transitions
+                #print "\n\n\nTransition History: count = ", len(self.state_value_transitions), "\n", self.state_value_transitions
                     
-                print "\n\n\nRewards History: count = ", len(self.rewards),  "\n", self.rewards
+                    #print "\n\n\nRewards History: count = ", len(self.rewards),  "\n", self.rewards
 
                 self.evaluate_returns()
                 self.requests_processed = 0
@@ -209,8 +208,10 @@ class environment:
     def store_state_action_pair(self, current_state):
         # state-action transition history
         #({SP state, SQ count}, action taken)
-        state = self.service_provider.get_transition(self.transition_dir)
-        transition = ([self.state_str(state)],    \
+        #state = self.service_provider.get_transition(self.transition_dir)
+        #current_state = self.state_str(state)
+        #current_state = current_state - 1
+        transition = ([current_state],    \
                       [self.queue_count()], \
                       [self.current_action])
         if(self.is_state_action_allowed(transition)):
@@ -231,7 +232,7 @@ class environment:
         cost = float(str(round(cost, 2)))
         self.update_i_rewards(current_state, self.queue_count(), cost)
     
-        print self.state_action_transitions
+    #print self.state_action_transitions
 
         if(self.valid_state_action):
             self.state_action_rewards.append(cost)
@@ -254,12 +255,12 @@ class environment:
         cost_value = self.delay_cost(state, direction)
         energy_value = self.power_cost(state)
         
-        print "cost_value: ", cost_value
-        print "a*cost_value", a*cost_value
+        #print "cost_value: ", cost_value
+        #print "a*cost_value", a*cost_value
         
-        print
-        print "energy_value: ", energy_value
-        print "(1-a)*energy_value: ", (1-a)*energy_value
+        #print
+        #print "energy_value: ", energy_value
+        #print "(1-a)*energy_value: ", (1-a)*energy_value
         #self.wait_debug("cost ... ")
         return  -1*(a*cost_value + (1-a)*energy_value)
 
@@ -283,7 +284,7 @@ class environment:
             delay = self.service_provider.get_transition_delay(direction)
             A = 57
 
-        print "[A:",A,"]"," delay, final: ", delay, " , ", self.cost_final
+#print "[A:",A,"]"," delay, final: ", delay, " , ", self.cost_final
 
         return math.pow(delay, 1.5)+ self.process_time
 
@@ -316,43 +317,42 @@ class environment:
         power = self.power_profile[self.state_str(state)]
         energy = power*cycle_duration
         
-        print "state: ", self.state_str(state)
-        print "power: ", power
-        print "cycle_duration: ", cycle_duration
-        print "energy: ", energy
+        #print "state: ", self.state_str(state)
+        #print "power: ", power
+        #print "cycle_duration: ", cycle_duration
+        #print "energy: ", energy
         #self.wait_debug("calcualting energy ... ")
         return energy
     
-# Evaluation of Rewards, Returns, State-Value Function, and State-Action-Value Details
+# Evaluation of instantenous Rewards
     def update_i_rewards(self, state, queue_count, value):
         #cycle = queue_count
             #if(state == 1):
             #cycle = self.active_process
         
         self.i_rewards[state-1][queue_count] = value
-        print "[UPDATE] \n", self.i_rewards
+#print "[UPDATE] \n", self.i_rewards
 
+# Evaluate Returns, State-Value Function, and State-Action-Value Function
     def evaluate_returns(self):
         
         self.evaluate_state_values()
-        #self.evaluate_state_action_values()
-        #self.evaluate_n_state_action_values()
+        self.evaluate_state_action_values()
         
         self.total_rewards = sum(self.rewards)
         
         if(self.current_episode == self.Max_Episode):
             sv = list([i/self.Max_Episode for i in self.state_value])
             self.show_transition()
-            #print "\n\n\n State Values:\n", sv
-            #print "total_rewards = ", self.total_rewards
-        
 
         self.returns = []
         self.rewards = []
         self.state_value_transitions = []
+        self.state_action_transitions = []
+        self.state_action_rewards = []
         self.human_history = []
     
-    
+    # state value rewards and returns
     def evaluate_state_values(self):
         g = self.gamma
         size = len(self.state_value_transitions)
@@ -360,6 +360,8 @@ class environment:
         state = self.state_value_transitions[n]
         Rn = self.rewards[n]
         Gn = Rn
+        Gn = float(str(round(Gn, 2)))
+        self.returns.insert(0, Gn)
         
         while(n >= 0):
             n -= 1
@@ -368,12 +370,8 @@ class environment:
             return_value = float(str(round(return_value, 2)))
             self.returns.insert(0, return_value)
             Gn = Rn
-        
-        #print "\n\nReturns:\n", self.state_action_rewards
-        #self.update_return(state,  Rn + g* Gn)
-        print
-        #self.show_transition()
-        
+    
+        #update matrix
         index = 0
         for state in self.state_value_transitions:
             Gt = self.returns[index]
@@ -381,28 +379,92 @@ class environment:
                 self.update_state_value(state, Gt)
             index += 1
 
+    # state-action rewards and returns
     def evaluate_state_action_values(self):
         g = self.gamma
         size = len(self.state_action_transitions)
         n = size - 1
-        state = self.state_value_transitions[n]
-        Rn = self.rewards[n]
+        Rn = self.state_action_rewards[n]
         Gn = Rn
+        Gn = float(str(round(Gn, 2)))
+        self.state_action_returns.insert(0, Gn)
         
         while(n >= 0):
             n -= 1
-            Rn = self.rewards[n]
+            Rn = self.state_action_rewards[n]
             return_value = Rn + g* Gn
             return_value = float(str(round(return_value, 2)))
-            self.returns.insert(0, return_value)
+            self.state_action_returns.insert(0, return_value)
+
+            # hold previous return
             Gn = Rn
-    
+                
+                
+        #update matrix
+        for index in np.arange(0, len(self.state_action_transitions)):
+            state_action = self.state_action_transitions[index]
+            state = state_action[2], state_action[1]
+            Gt = self.state_action_returns[index]
+            SP_State = state_action[0][0]
+           
+           #print self.state_str(SP_State)
+            if(not self.is_Q_tau_updated(state, SP_State)):
+                self.update_state_action_value(state, Gt, SP_State)
+            
+            if(not self.is_Q_n_updated(state, SP_State)):
+                #self.wait_debug("hit ...")
+                self.update_state_action_value(state, Gt, SP_State)
+
+
+
+
+
+# check if transition, action, or state is allowed
     def update_state_value(self, state, value):
         self.state_value[state] = float(str(round(value, 2)))
     
     def is_sv_updated(self, state):
         return  self.state_value[state]
     
+    
+    def is_Q_tau_updated(self, state, SP_State):
+        #print "is_Q_tau_updated: ", state
+        if(SP_State == self.idle):
+            value = int(self.tau_state_action_values[state])
+            if(value ==  self.defualt_reward):
+                #self.wait_debug("Q_tau = False")
+                return  False
+            else:
+                #self.wait_debug("Q_tau = True")
+                return True
+    
+    def is_Q_n_updated(self, state, SP_State):
+        #print "is_Q_n_updated: ", state
+        
+        if(SP_State == self.sleep):
+            value = int(self.n_state_action_values[state])
+            if(value ==  self.defualt_reward):
+                #self.wait_debug("Q_n = False")
+                return  False
+            else:
+                #self.wait_debug("Q_n = True")
+                    return True
+
+    def get_tau_q_values(self):
+        return self.tau_state_action_values
+
+    def get_n_q_values(self):
+        return self.n_state_action_values
+    
+    def update_state_action_value(self, state, value, SP_State):
+
+        #SP_State = SP_State[0]
+
+        if(SP_State == self.idle):
+            self.tau_state_action_values[state] = value
+        
+        elif(SP_State == self.sleep):
+            self.n_state_action_values[state] = value
     
     def is_tau_sv_updated(self, state):
         return  self.tau_state_action_values[state]
@@ -454,34 +516,44 @@ class environment:
 
 
     def show_transition(self):
+        print "\n" * 15
         n = 0
         size = len(self.state_value_transitions)
         
         print "state_value_transitions(self) {size}: ", size
-        while(n < size-1):
-            print self.human_history[n], "{Rt:", self.rewards[n], "}",\
-                "->", self.human_history[n+1],"{Rt:", self.rewards[n+1], "}", "\n"
-            n += 2
+            # while(n < size-1):
+            #print self.human_history[n], "{Rt:", self.rewards[n], "}",\
+            #"->", self.human_history[n+1],"{Rt:", self.rewards[n+1], "}", "\n"
+        #n += 2
 
-        if(size % 2 != 0):
-            print self.human_history[n],"{Rt:", self.rewards[n], "}\n\n",
+#if(size % 2 != 0):
+        #print self.human_history[n],"{Rt:", self.rewards[n], "}\n\n",
 
-
+        print
+        print
+        print
         n = 0
         size = len(self.state_action_transitions)
-    
         print "state_action_transitions(self) {size}: ", size
-        while(n < size-1):
-            print self.state_action_transitions[n], "{Rt:", self.state_action_rewards[n], "}",\
-            "->", self.state_action_transitions[n+1],"{Rt:", self.state_action_rewards[n+1], "}", "\n"
-            n += 2
+            #while(n < size-1):
+            #print self.state_action_transitions[n], "{Rt:", self.state_action_rewards[n], "}",\
+            #"->", self.state_action_transitions[n+1],"{Rt:", self.state_action_rewards[n+1], "}", "\n"
+        #n += 2
 
-        if(size % 2 != 0):
-            print self.state_action_transitions[n],"{Rt:", self.state_action_rewards[n], "}\n\n",
-
-
+#if(size % 2 != 0):
+#print self.state_action_transitions[n],"{Rt:", self.state_action_rewards[n], "}\n\n",
 
 
+
+        print
+        print
+        print
+        print "self.tau_state_action_values:\n\n", self.tau_state_action_values
+
+        print
+        print
+        print
+        print "self.n_state_action_values:\n\n", self.n_state_action_values
 
 
 

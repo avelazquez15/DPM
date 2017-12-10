@@ -16,11 +16,12 @@ duration = 100000
 queue_size = 10
 requester_length = duration
 episodes = 1
-requests_per_episode = 6
+requests_per_episode = 600
+epsilon = 0.9
 
 
 environment = en.environment(requester_length, queue_size, requests_per_episode, episodes)
-agent = manager.DPM(environment)
+agent = manager.DPM(environment, epsilon)
 print 
 clk = 0
 while(1):
