@@ -30,7 +30,7 @@ class DPM:
         cycle = environment.service_provider.get_cycle()
         
         if(current_state == self.idle and queue_count == 0):
-            print "case 1: idle"
+            #print "case 1: idle"
             
             timeout = environment.service_provider.get_time_out()
             duration = self.increment_duration(environment)
@@ -50,10 +50,10 @@ class DPM:
                 environment.transition_dir = "idle2sleep"
                 environment.service_provider.set_time_out(action)
                 environment.service_provider.set_cycle(0)
-                print "selecting a tau policy ..."
+            #print "selecting a tau policy ..."
             
             elif( cycle == timeout):
-                print "timeout tau reached ... "
+                #print "timeout tau reached ... "
 
                 environment.current_action = self.tau
                 environment.transition_dir = "idle2sleep"
@@ -69,7 +69,7 @@ class DPM:
 
 
         elif(current_state == self.idle and queue_count > 0):
-            print "case 2: going to active ... "
+            #print "case 2: going to active ... "
             timeout = environment.service_provider.get_time_out()
             environment.service_provider.set_cycle(0)
             cycle = environment.service_provider.get_cycle()
@@ -83,7 +83,7 @@ class DPM:
             environment.transition(current_state)
 
         elif((current_state == self.sleep and previous_state == self.idle) and queue_count == 0):
-            print "case 3: entering sleep ... "
+            #print "case 3: entering sleep ... "
             #print "[N-Policy, queue_count] " , "[",self.N, ",", environment.queue_count() ,"]"
             
             duration = self.increment_duration(environment)
@@ -98,7 +98,7 @@ class DPM:
                 environment.cost_init = environment.service_queue.timer_value()
         
         elif((current_state == self.sleep and previous_state == self.sleep )and queue_count > 0):
-            print "case 4: in sleep, but request in queue arrived ... "
+            #print "case 4: in sleep, but request in queue arrived ... "
             #print "[N-Policy, queue_count] " , "[",self.N, ",", environment.queue_count() ,"]"
                 
             duration = self.increment_duration(environment)
@@ -125,7 +125,7 @@ class DPM:
 
 
         elif(current_state == self.active and queue_count == 0):
-            print "case 5: going to idle ... "
+            #print "case 5: going to idle ... "
 
             environment.service_provider.set_cycle(0)
             duration = self.increment_duration(environment)
@@ -136,7 +136,7 @@ class DPM:
             environment.transition(current_state)
 
         elif(current_state == self.active and queue_count > 0):
-            print "case 6: staying in active ..."
+            #print "case 6: staying in active ..."
 
             if(environment.cost_init == 0):
                 environment.cost_init = environment.service_queue.timer_value()
@@ -152,7 +152,7 @@ class DPM:
             #environment.view_status()
 
         elif(current_state == self.sleep and queue_count == 0):
-            print "case 7: staying in sleep ..."
+            #print "case 7: staying in sleep ..."
             
             environment.under_N_poicy = False
             
@@ -186,14 +186,16 @@ class DPM:
                 #print "column_0", column_0
                 #print "max_action ", max_action
                 #self.wait_debug("just wait .. ")
-            action = column_0.index(max_action)
+            index = column_0.index(max_action)
+            action = self.taus[index]
         
         #Random Policy
         else:
-            action = randrange(0, len(self.taus))
+            index = randrange(0, len(self.taus))
+            action = self.taus[index]
         
         # return Policy
-        return self.taus[action]
+        return action
  
 
     def random_idel2active(self):
@@ -208,7 +210,8 @@ class DPM:
             q_values = environment.get_n_q_values()
             column_0 = [row[sq_count] for row in q_values]
             max_action = max(column_0)
-            action = column_0.index(max_action)
+            index = column_0.index(max_action)
+            action = self.Ns[index]
 
         #Random Policy
         else:

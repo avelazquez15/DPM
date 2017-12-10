@@ -7,12 +7,15 @@ import matplotlib.pyplot as plt
 import math
 from collections import deque
 import matplotlib.pyplot as plt
+import termios, fcntl, sys, os
 
-
+def wait_debug( message):
+    print "[DEBUG] ", message
+    sys.stdin.read(1)
 
 def generate_number(size):
-    mu = 10
-    sigma = 5
+    mu = 100
+    sigma = 25
     x = []
     n = 0
     data_points = size
@@ -59,12 +62,45 @@ def is_transition_allowed(state_action_transitions, state_action_pair):
         except ValueError:
             return True
 
+
+
+def get_column(average_runs, index):
+    #print average_runs
+    
+    column = [average_runs[row][index] for row in range(len(average_runs[0]))]
+    return sum(column)
+
+def average(average_runs):
+    runs = []
+    for ep in np.arange(0, 5):
+        value = get_column(average_runs, int(ep))
+        runs.insert(ep, value)
+
+    print runs
+    average = [i/float(5) for i in runs]
+    average = [float(str(round(i, 2))) for i in average]
+    return average
+
+
+
+'''
 file_name =  "inter_arrival_time.csv"
-size = 2000000
+size = 5000
 ia = generate_number(size)
-
 write2file(ia, file_name)
+'''
 
+
+average_runs = np.ones((5,5),  dtype=np.int8)
+average_runs[2][0] = 10
+average_runs[2][1] = 20
+average_runs[2][2] = 30
+
+print average_runs
+
+x = average(average_runs)
+
+print x
 
 
 

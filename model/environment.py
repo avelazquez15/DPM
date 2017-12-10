@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 class environment:
     
-    def __init__(self, request_size, queue_size, requests_per_episode, episodes):
+    def __init__(self, request_size, queue_size, requests_per_episode, episodes, runs):
         # environment needs
         self.power_profile = {"active": 1, "idle" : 0.80, "sleep": 0.01}     # mW
         self.current_action = -1
@@ -21,7 +21,9 @@ class environment:
         self.requests_processed = 0
         self.active_process = 0
         self.current_episode = 1
+        self.current_run = 0
         self.Max_Episode = episodes
+        self.Max_runs = runs
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
@@ -33,6 +35,7 @@ class environment:
         self.valid_state_value = False
         self.accum_rewards = []
         self.internal_clock = 0
+        self.average_runs = np.zeros((runs, episodes))
         
         # SQ, SP, SR
         queue_size = queue_size + 2
@@ -73,6 +76,7 @@ class environment:
 
         # formatting
         np.set_printoptions(threshold='nan')
+
 
 # non-stationary
     def stimulate(self, clk):
@@ -200,12 +204,19 @@ class environment:
                 self.requests_processed = 0
                 self.internal_clock = 0
                 if(self.current_episode == self.Max_Episode):
+                    self.current_run += 1
+                    #message = "Episode", self.current_episode,
+                    #self.wait_debug(message)
+                    self.current_episode = 0
+                    
+                if(self.current_run == self.Max_runs):
+                    self.accum_rewards = self.average_over_runs()
                     print self.accum_rewards
                     plt.plot(self.accum_rewards[1:])
                     plt.ylabel("Accum. Rewards")
                     plt.xlabel("Episode")
                     plt.show()
-                    message = "Episode", self.current_episode,
+                    message = "Run:", self.current_episode,
                     self.wait_debug(message)
 
                 self.current_episode += 1
@@ -259,14 +270,16 @@ class environment:
         #print "state_action_rewards ",  self.state_action_rewards
         #self.wait_debug("storing rewards ... ")
         else:
-            index = len(self.state_action_rewards) - 1
-            self.state_action_rewards[index] = cost
+            if(len(self.state_action_rewards) > 0):
+                index = len(self.state_action_rewards) - 1
+                self.state_action_rewards[index] = cost
     
         if(self.valid_state_value):
             self.rewards.append(cost)
         else:
-            index = len(self.rewards) - 1
-            self.rewards[index] = cost
+            if(len(self.rewards) > 0):
+                index = len(self.rewards) - 1
+                self.rewards[index] = cost
     
 # cost function value details
     def cost(self, state, direction):
@@ -343,10 +356,9 @@ class environment:
         self.evaluate_state_action_values()
         
         self.total_rewards = sum(self.rewards)
-        self.accum_rewards.append(self.total_rewards)
-        
-        #if(self.current_episode == self.Max_Episode):
-            #sv = list([i/self.Max_Episode for i in self.state_value])
+        self.total_rewards = float(str(round(self.total_rewards, 2)))
+
+        self.average_runs[self.current_run][self.current_episode-1] = self.total_rewards
         self.show_transition()
 
         self.returns = []
@@ -516,6 +528,24 @@ class environment:
             self.valid_state_value = True
             return self.valid_state_value
 
+
+# converging
+    def get_column(self, index):      
+        column = [self.average_runs[row][index] for row in np.arange(0, self.Max_runs)]
+        return sum(column)
+
+    def average_over_runs(self):
+        runs = []
+        for ep in np.arange(0, self.Max_Episode):
+            value = self.get_column(ep)
+            runs.insert(ep, value)
+    
+        average = [i/float(self.Max_runs) for i in runs]
+        average = [float(str(round(i, 2))) for i in average]
+        return average
+
+
+
 # debugging
     def wait_debug(self, message):
         print "[DEBUG] ", message
@@ -536,9 +566,7 @@ class environment:
 #if(size % 2 != 0):
         #print self.human_history[n],"{Rt:", self.rewards[n], "}\n\n",
 
-        print
-        print
-        print
+
         n = 0
         size = len(self.state_action_transitions)
         print "state_action_transitions(self) {size}: ", size
@@ -552,17 +580,18 @@ class environment:
 
 
 
-        print
-        print
-        print
-        #print "self.tau_state_action_values:\n\n", self.tau_state_action_values
-        report = "tau_state_action_values\n\n", str(self.tau_state_action_values), \
-                    "\n\n\nself.n_state_action_values\n\n", str(self.n_state_action_values)
+
+        report =    "tau_state_action_values\n\n", str(self.tau_state_action_values),                   \
+                    "\n\n\nself.n_state_action_values\n\n", str(self.n_state_action_values),            \
+                    "\n\n\nself.self.average_runs\n\n", str(self.average_runs),                         \
+                    "\n\nProgress:\nEpisode: ", str(self.current_episode), "/", str(self.Max_Episode),  \
+                    "\nRun: ", str(self.current_run+1), "/", str(self.Max_runs)
         self.write2file(report, "debug_report.txt")
-        print
-        print
-        print
-    #print "self.n_state_action_values:\n\n", self.n_state_action_values
+
+
+
+
+
 
 
     def write2file(self, data, file_name):
