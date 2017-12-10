@@ -20,7 +20,7 @@ class Service_Requester:
         return value in self.inter_arrival
 
     def request_count(self):
-        return randrange(1, 10)
+        return randrange(1, 15)
 
     def view(self):
         plt.stem( self.inter_arrival)

@@ -5,12 +5,14 @@ import service_requester as sr
 from random import randrange
 import termios, fcntl, sys, os
 import math
+import matplotlib.pyplot as plt
+
 
 class environment:
     
     def __init__(self, request_size, queue_size, requests_per_episode, episodes):
         # environment needs
-        self.power_profile = {"active": 1, "idle" : 0.80, "sleep": 0.1}     # mW
+        self.power_profile = {"active": 1, "idle" : 0.80, "sleep": 0.01}     # mW
         self.current_action = -1
         self.process_time = 1
         self.cost_init = 0
@@ -23,16 +25,19 @@ class environment:
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
-        self.gamma = 0.8
+        self.gamma   = 0.95
+        self.alpha   = 0.1
         self.case_number = 0
         self.defualt_reward = 0
         self.valid_state_action = False
         self.valid_state_value = False
+        self.accum_rewards = []
+        self.internal_clock = 0
         
         # SQ, SP, SR
         queue_size = queue_size + 2
         self.requests_per_episode = requests_per_episode
-        self.service_provider = sp.Service_Provider(self.sleep)
+        self.service_provider = sp.Service_Provider(self.idle)
         self.service_requester = sr.Service_Requester(request_size)
         self.service_queue = q.Service_Queue(queue_size)
         
@@ -71,8 +76,9 @@ class environment:
 
 # non-stationary
     def stimulate(self, clk):
+        self.internal_clock += 1
         #check if inter arrival request has arrived
-        if(self.service_requester.time(clk)):
+        if(self.service_requester.time(self.internal_clock)):
             #check if timer has been enabled
             if(not self.service_queue.is_running()):
                 self.service_queue.start_timer()
@@ -89,7 +95,7 @@ class environment:
       
     def check_queue(self):
         if(self.current_state() == self.active):
-            print "[QUEUE]   Before -", self.service_queue.view_queue()
+            #print "[QUEUE]   Before -", self.service_queue.view_queue()
             #print "[ARRIVAL] Before -", self.service_queue.view_request_arrival()
             self.service_queue.get()
             self.active_process += 1
@@ -103,12 +109,12 @@ class environment:
     def setup(self, tau_state_action_len, n_state_action_len):
         # Case 1 & 2 (Tau Policy)
         # shape = (depth, rows, columns)
-        shape = (tau_state_action_len, self.service_queue.queue_size)
+        shape = (tau_state_action_len, 2)#self.service_queue.queue_size)
         self.tau_state_action_values = np.ones(shape)*self.defualt_reward
 
         # Case 3 & 4 (N-Policy)
         # shape = (depth, rows, columns)
-        shape = (n_state_action_len, self.service_queue.queue_size)
+        shape = (n_state_action_len, 10)#self.service_queue.queue_size)
         self.n_state_action_values = np.ones(shape)*self.defualt_reward
     
     
@@ -160,7 +166,7 @@ class environment:
     def transition(self, current_state):
         self.service_provider.transition_period += 1
         delay = self.service_provider.get_transition_delay(self.transition_dir)
-        print "self.service_provider.transition_period = ", self.service_provider.transition_period
+        #print "self.service_provider.transition_period = ", self.service_provider.transition_period
         
         self.store_state_action_pair(current_state)
         self.store_state_value_pair(current_state)
@@ -179,8 +185,8 @@ class environment:
             
             # change to new case
             new_state = self.service_provider.get_transition(self.transition_dir)
-            print "current state :", "[", self.state_str(current_state), ",", self.queue_count() ,"]"
-            print "next state :", new_state , "[", self.state_str(new_state), ",", self.queue_count() ,"]"
+            #print "current state :", "[", self.state_str(current_state), ",", self.queue_count() ,"]"
+            #print "next state :", new_state , "[", self.state_str(new_state), ",", self.queue_count() ,"]"
             self.change_state(new_state)
             
             
@@ -192,7 +198,13 @@ class environment:
 
                 self.evaluate_returns()
                 self.requests_processed = 0
+                self.internal_clock = 0
                 if(self.current_episode == self.Max_Episode):
+                    print self.accum_rewards
+                    plt.plot(self.accum_rewards[1:])
+                    plt.ylabel("Accum. Rewards")
+                    plt.xlabel("Episode")
+                    plt.show()
                     message = "Episode", self.current_episode,
                     self.wait_debug(message)
 
@@ -211,9 +223,16 @@ class environment:
         #state = self.service_provider.get_transition(self.transition_dir)
         #current_state = self.state_str(state)
         #current_state = current_state - 1
-        transition = ([current_state],    \
-                      [self.queue_count()], \
-                      [self.current_action])
+        
+        if(current_state == self.idle):
+            transition = ([current_state],          \
+                          [0],                      \
+                          [self.current_action])
+        else:
+            transition = ([current_state],          \
+                          [self.queue_count()],     \
+                          [self.current_action])
+        
         if(self.is_state_action_allowed(transition)):
             self.state_action_transitions.append(transition)
 
@@ -230,7 +249,7 @@ class environment:
     def evaluate_cost(self, current_state, valid_transition):
         cost = self.cost(current_state, self.transition_dir)
         cost = float(str(round(cost, 2)))
-        self.update_i_rewards(current_state, self.queue_count(), cost)
+        #self.update_i_rewards(current_state, self.queue_count(), cost)
     
     #print self.state_action_transitions
 
@@ -251,7 +270,7 @@ class environment:
     
 # cost function value details
     def cost(self, state, direction):
-        a = 0.3
+        a = 0.1
         cost_value = self.delay_cost(state, direction)
         energy_value = self.power_cost(state)
         
@@ -289,30 +308,14 @@ class environment:
         return math.pow(delay, 1.5)+ self.process_time
 
     def power_cost(self, state):
-        if(state == self.sleep  and self.under_N_poicy == True):     # Case 3 & 4
-            #delay = (self.cost_final - self.cost_init)
-            A = 34
-        
-        elif(state == self.active and self.service_queue.request_arrival_count() > 0):    # Case 6
-            #self.cost_init = self.service_queue.request_time()
-            #delay = (self.cost_final - self.cost_init)
-            #self.requests_processed += 1
-            A = 6
-        
-        elif(state == self.idle):               # Case 1 & 2
-            #timeout = self.service_provider.get_cycle()
-            #delay = timeout + self.service_provider.get_transition_delay(direction)
-            A = 12
-        
-        else:                                                           # Case 5 & 7
-            #delay = self.service_provider.get_transition_delay(direction)
-            A = 57
 
         if(self.service_provider.transition_period > 0):
             cycle_duration = self.service_provider.transition_period
         else:
             cycle_duration = self.service_provider.get_duration()
 
+
+        #self.wait_debug("power cost")
         state = self.service_provider.get_transition(self.transition_dir)
         power = self.power_profile[self.state_str(state)]
         energy = power*cycle_duration
@@ -340,17 +343,20 @@ class environment:
         self.evaluate_state_action_values()
         
         self.total_rewards = sum(self.rewards)
+        self.accum_rewards.append(self.total_rewards)
         
-        if(self.current_episode == self.Max_Episode):
-            sv = list([i/self.Max_Episode for i in self.state_value])
-            self.show_transition()
+        #if(self.current_episode == self.Max_Episode):
+            #sv = list([i/self.Max_Episode for i in self.state_value])
+        self.show_transition()
 
         self.returns = []
         self.rewards = []
         self.state_value_transitions = []
         self.state_action_transitions = []
         self.state_action_rewards = []
+        self.state_action_returns = []
         self.human_history = []
+        self.total_rewards  = 0
     
     # state value rewards and returns
     def evaluate_state_values(self):
@@ -421,33 +427,33 @@ class environment:
 
 # check if transition, action, or state is allowed
     def update_state_value(self, state, value):
-        self.state_value[state] = float(str(round(value, 2)))
+        old_estimate = self.state_value[state]
+        target = float(str(round(value, 2)))
+        
+        self.state_value[state] = old_estimate + self.alpha*(target - old_estimate)
     
     def is_sv_updated(self, state):
-        return  self.state_value[state]
+        return self.state_value[state]
     
     
     def is_Q_tau_updated(self, state, SP_State):
-        #print "is_Q_tau_updated: ", state
+
         if(SP_State == self.idle):
+            #print "is_Q_tau_updated ", state
             value = int(self.tau_state_action_values[state])
             if(value ==  self.defualt_reward):
-                #self.wait_debug("Q_tau = False")
                 return  False
+            
             else:
-                #self.wait_debug("Q_tau = True")
                 return True
     
     def is_Q_n_updated(self, state, SP_State):
-        #print "is_Q_n_updated: ", state
-        
         if(SP_State == self.sleep):
             value = int(self.n_state_action_values[state])
             if(value ==  self.defualt_reward):
-                #self.wait_debug("Q_n = False")
                 return  False
+            
             else:
-                #self.wait_debug("Q_n = True")
                     return True
 
     def get_tau_q_values(self):
@@ -458,13 +464,14 @@ class environment:
     
     def update_state_action_value(self, state, value, SP_State):
 
-        #SP_State = SP_State[0]
-
+        target = float(str(round(value, 2)))
         if(SP_State == self.idle):
-            self.tau_state_action_values[state] = value
+            old_estimate = self.tau_state_action_values[state]
+            self.tau_state_action_values[state] = old_estimate + self.alpha*(target - old_estimate)
         
         elif(SP_State == self.sleep):
-            self.n_state_action_values[state] = value
+            old_estimate = self.n_state_action_values[state]
+            self.n_state_action_values[state] = old_estimate + self.alpha*(target - old_estimate)
     
     def is_tau_sv_updated(self, state):
         return  self.tau_state_action_values[state]
@@ -548,12 +555,23 @@ class environment:
         print
         print
         print
-        print "self.tau_state_action_values:\n\n", self.tau_state_action_values
+        #print "self.tau_state_action_values:\n\n", self.tau_state_action_values
+        report = "tau_state_action_values\n\n", str(self.tau_state_action_values), \
+                    "\n\n\nself.n_state_action_values\n\n", str(self.n_state_action_values)
+        self.write2file(report, "debug_report.txt")
+        print
+        print
+        print
+    #print "self.n_state_action_values:\n\n", self.n_state_action_values
 
-        print
-        print
-        print
-        print "self.n_state_action_values:\n\n", self.n_state_action_values
+
+    def write2file(self, data, file_name):
+        f = open(file_name,"w")
+        n = 0
+        f.writelines(data)
+        f.writelines("\n\n\n\n")
+        f.close()
+
 
 
 

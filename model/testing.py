@@ -11,19 +11,19 @@ import matplotlib.pyplot as plt
 
 
 def generate_number(size):
+    mu = 10
+    sigma = 5
     x = []
     n = 0
-    
-    data_points = size/25
+    data_points = size
     y = 0
+    A = 0
     while(n < data_points):
+        B = int(np.random.normal(mu, sigma, 1))
+        arrival = A + B
+        x.append(arrival)
         n += 1
-        num = np.random.randint(0, size)
-        if(n >= 20 and n <= 100):
-            # do nothing
-            y += 1
-        else:
-            x.append(num)
+        A = x[n-1]
     
     return sorted(set(x))
 
@@ -59,22 +59,12 @@ def is_transition_allowed(state_action_transitions, state_action_pair):
         except ValueError:
             return True
 
+file_name =  "inter_arrival_time.csv"
+size = 2000000
+ia = generate_number(size)
 
-tau_q_value = np.zeros((5,5))
-
-tau_q_value[2][0] = 10
-
-print tau_q_value
-
-values = [row[0] for row in tau_q_value]
+write2file(ia, file_name)
 
 
-print values
-              
-              
-              
-              
-              
-              
-              
+
 
