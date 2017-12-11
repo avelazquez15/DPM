@@ -12,11 +12,10 @@ print "\033[1m", "***NEW SIMULATION *** ", datetime.today(), "\033[0m"
 duration = 2000000
 queue_size = 300
 requester_length = duration
-episodes = 200
-requests_per_episode = 20
-epsilon = 0.9
-runs = 10
-
+episodes = 100
+requests_per_episode = 100
+epsilon = 1
+runs = 3
 
 environment = en.environment(requester_length, queue_size, requests_per_episode, episodes, runs)
 agent = manager.DPM(environment, epsilon)

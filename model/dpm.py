@@ -10,9 +10,9 @@ class DPM:
         self.active  = 1
         self.idle    = 2
         self.sleep   = 3
-        self.taus = [1,2,3,5,7,10,12,14,16,20]
+        self.taus = [1,2,3,4,5]#,7,10,12,14,16,20]
         #self.Ns = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        self.Ns =  [0, 1,2,3,4,5]#list(np.arange(0, environment.queue_len()-1))
+        self.Ns =  list(np.arange(1, environment.requests_per_episode+1))
         print "N-Policy", self.Ns
         self.wait_debug("wait...")
         self.tau = 0
@@ -39,7 +39,6 @@ class DPM:
             if(timeout == 0):
                 environment.service_provider.set_transition_period(0)
                 #environment.view_queue()
-                
                 # select tau action from Policy
                 action = self.select_tauPolicy(environment)
                 self.tau = self.taus.index(action)
@@ -49,12 +48,11 @@ class DPM:
                 # set transition properties
                 environment.transition_dir = "idle2sleep"
                 environment.service_provider.set_time_out(action)
-                environment.service_provider.set_cycle(0)
+                environment.service_provider.set_cycle(1)
             #print "selecting a tau policy ..."
             
             elif( cycle == timeout):
                 #print "timeout tau reached ... "
-
                 environment.current_action = self.tau
                 environment.transition_dir = "idle2sleep"
                 environment.case_number = 1
@@ -63,7 +61,7 @@ class DPM:
             else:
                 environment.current_action = self.tau
                 cycle = self.increment_cycle(environment)
-                environment.evaluate_cost(current_state, False)
+                #environment.evaluate_cost(current_state)
 
             #print "In cycle ", cycle, "  waiting for timeout = ", timeout
 
@@ -94,8 +92,8 @@ class DPM:
             environment.current_action = self.Ns.index(self.N)
             environment.case_number = 2
             
-            if(environment.cost_init == 0):
-                environment.cost_init = environment.service_queue.timer_value()
+            #if(environment.cost_init == 0):
+            #environment.cost_init = environment.service_queue.timer_value()
         
         elif((current_state == self.sleep and previous_state == self.sleep )and queue_count > 0):
             #print "case 4: in sleep, but request in queue arrived ... "
@@ -114,6 +112,7 @@ class DPM:
             environment.current_action = self.Ns.index(self.N)
             environment.case_number = 2
 
+#print "N = ", self.N
             if(environment.queue_count() >= self.N):
                 environment.transition_dir = "sleep2active"
                 environment.transition(current_state)
@@ -121,13 +120,15 @@ class DPM:
             else:
                 environment.store_state_action_pair(current_state)
                 environment.store_state_value_pair(current_state)
-                environment.evaluate_cost(current_state, False)
+                environment.evaluate_cost(current_state)
+
 
 
         elif(current_state == self.active and queue_count == 0):
             #print "case 5: going to idle ... "
 
             environment.service_provider.set_cycle(0)
+            cycle = self.increment_cycle(environment)
             duration = self.increment_duration(environment)
             environment.cost_final = environment.service_queue.timer_value() + 1
             environment.current_action = self.random_active2idle()
@@ -143,6 +144,7 @@ class DPM:
         
             environment.cost_final = environment.service_queue.timer_value() + 1
             duration = self.increment_duration(environment)
+            cycle = self.increment_cycle(environment)
 
             environment.current_action = 100#self.random_active2idle()
             environment.transition_dir = "active2active"
@@ -191,7 +193,7 @@ class DPM:
         
         #Random Policy
         else:
-            index = randrange(0, len(self.taus))
+            index = randrange(1, len(self.taus))
             action = self.taus[index]
         
         # return Policy
@@ -215,7 +217,7 @@ class DPM:
 
         #Random Policy
         else:
-            action = randrange(0, len(self.Ns))
+            action = randrange(1, len(self.Ns))
         
         # return Policy
         return action

@@ -3,7 +3,9 @@ Transition from 'Idle' to 'Sleep' after tau 'timeout' has been reached
        reason: SQ.count() == 0
        action: pick a tau timeout duration
     direction: idle2sleep
-
+TT in Idle = Timeout + Transition time
+(Idle,0)---- TT -----(Sleep,0)
+Here we don't need to worry about a times as we are already keeeping one to match Timeout chosen
 
 
 
@@ -12,8 +14,8 @@ Transition from 'Idle' to 'Active' before tau 'timeout' has been reached
        reason: SQ.count() > 0
        action: pick a tau timeout duration
     direction: idle2active
-
-
+(Idle,0)---- TTshort -----(Active,Q)
+Here as well we were keeping a counter so we are good and penalizing (I,0) for the time in (I,0)
 
 
 Case 3:
@@ -23,6 +25,7 @@ Select an N-Policy
        action: pick N-Policy
     direction: sleep2active
 
+Keep a counter for how much time you are in (S,Q1), if the state is changed (S,Q2), (S,Q1) is power penalized for the duration it was in (S,Q2)
 
 
 
@@ -32,6 +35,7 @@ Select an N-Policy
        reason: SQ.count() > 0 and N-Policy is not satisfied
        action: pick N-Policy
     direction: sleep2active
+(Sleep,Q) is penalized for the complete duration it was in (Sleep,Q) + Transition power penalty
 
 
 
