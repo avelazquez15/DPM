@@ -147,3 +147,44 @@ A Dynamic Power Management algorithm using Reinforcement Learning for IoT device
     (sp=transient,sr=high,sq=11)   0.000000  0.000000
 
 # Explanation
+
+This algorithm models a [Texas Instrument CC2652R7 Wireless MCU](https://www.ti.com/product/CC2652R7#product-details) 
+as a Service Provider, a Service Requester modeling an iOS application that requests access to the Bluetooth component 
+of the CC2652R7 peripheral device, and the requests are buffered in a Service Queue of length (N=12). 
+
+The goal of the algorithm is to strike a balance between the amount of Power (Watts) and Performance (Speed) of the 
+system. Performance is measured as the number of requests waiting to be process in the service queue and Power is 
+measured as the RMS Power utilized. 
+
+Interarrivals represents the time of arrival for a request to the Service Provider (e.g., Bluetooth Module).
+
+In practice the reinforcement agent takes an action, observes the cost for taken the action, and updates the value in
+the q-value table. The goal is to minimize the cost for taking an action. In the models below the Service Provider 
+contains both an active and sleep power state, the Service Requester can either request access to the service provider 
+in a low, high, or idle mode, and finally the requests that are buffered in the service queue can be of length N where
+each length represents the state of the queue.
+
+The [results](#results) section compares the Dynamic Power Management algorithm implemented using Reinforcement Learning
+to processing a request by the service requester immediately then going directly to a sleep state. The DPM algorithm 
+decreases the power utilized by ~150% but roughly 2.66 requests will be waiting in the queue to be processed instead of 0.
+
+### Agent & Environment
+![Agent & Envronment](images/AgentEnvironment.png)
+_source: [1]_
+
+### Environment States
+![State Transitions](images/StateDiagram.png)
+_source: [1]_
+
+### Q Value Function
+![Qvalue Function](images/QValueFunction.png)
+_source: [1]_
+
+
+
+
+# References
+
+1. Hao Shen, Ying Tan, Jun Lu, Qing Wu, and Qinru Qiu. 2013. Achieving autonomous power management using reinforcement 
+learning. ACM Trans. Des. Autom. Electron. Syst. 18, 2, Article 24 (March 2013), 32 pages. 
+DOI:https://doi.org/10.1145/2442087.2442095
