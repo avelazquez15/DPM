@@ -109,11 +109,10 @@ class DPM:
             current_sq_state = self.pcba.service_queue.previous_state
             current_state = f'(sp={current_sp_state},sr={current_sr_state},sq={current_sq_state})'
 
+            # TODO: add support for multiple service providers and service queues
             # for _sp_state in self.pcba.ble_module.states:
             #
             #     for _sq_state in self.pcba.service_queue.states:
-            #         # sp_state_prime = self.pcba.ble_module.state_prime(command=_action)
-            #         # virtual_state = previous_state
 
             for _action in self.pcba.ble_module.actions:
                 virtual_state_action = (previous_state, _action)
@@ -146,14 +145,16 @@ class DPM:
         return transitions, queue_requests, power
 
     def report(self, transitions: list, queue_requests: list, power: list):
+        ble_state_index = len(self.pcba.ios_app.states) * len(self.pcba.service_queue.states)
+
         print("\n\n\tsp=active")
-        print(self.agent.q_values[0:36])
+        print(self.agent.q_values.iloc[0:ble_state_index])
 
         print("\n\n\tsp=sleep")
-        print(self.agent.q_values[36:72])
+        print(self.agent.q_values.iloc[ble_state_index:ble_state_index*2])
 
         print("\n\n\tsp=transient")
-        print(self.agent.q_values[72:108])
+        print(self.agent.q_values.iloc[ble_state_index*2:ble_state_index*3])
 
         # FIGURE 1
         plt.figure(1)
@@ -238,7 +239,7 @@ if __name__ == '__main__':
     }}]
 
     dpm = DPM(inter_arrivals=[1, 2, 3, 4, 10, 11, 12, 13, 60, 61],
-              episode_duration=200,
+              episode_duration=100,
               learning_rate=0.80,
               discount_factor=0.10,
               sq_length=12,
