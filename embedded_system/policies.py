@@ -1,5 +1,5 @@
 from abc import ABC
-from environment import ServiceProvider, ServiceRequestor, ServiceQueue
+from services import ServiceProvider, ServiceRequestor, ServiceQueue
 
 """
 Q-learning is an off-policy method in which the agent learns the value based on action a* derived from the 
@@ -67,8 +67,10 @@ class QLearning(Policy):
     def __init__(self,
                  shape: tuple,
                  learning_rate: float = Policy.LEARNING_MODE,
-                 discount_factor: float = Policy.NEAR_FUTURE):
+                 discount_factor: float = Policy.NEAR_FUTURE,
+                 verbose: bool = False):
         super().__init__(q_values=shape, epsilon=learning_rate, gamma=discount_factor)
+        self.VERBOSE = verbose
 
     def print(self, message: str):
         if self.VERBOSE:
@@ -137,16 +139,11 @@ class QLearning(Policy):
                       delta: float = 0.0):
 
         def _power_cost(_state_action: dict):
-            _state_power = _state_action['service_provider']['state_power']
+            _state_machine = _state_action['service_provider']['state_machine']
             _sp_state = _state_action['service_provider']['state']
 
-            _sr_state = _state_action['service_requester']['state']
-            _sr_power = _state_action['service_requester']['power'][_sr_state]
-
-            _sq_state = _state_action['service_queue']['state']
-
-            for _sp_item in _state_power:
-                if _sp_item['state']['status'] == _sp_state:
+            for _sp_item in _state_machine:
+                if _sp_item['state']['power_mode'] == _sp_state:
                     return _sp_item['state']['power']
 
         def _performance_penalty(_state_action: dict):
@@ -155,63 +152,33 @@ class QLearning(Policy):
         service_provider, service_requester, service_queue = state_space
 
         sp_state = service_provider.previous_state
-        sr_state = service_queue.previous_state
-
+        sr_state = service_requester.previous_state
+        sq_state = service_queue.previous_state
         if is_virtual_state:
             sp_state = service_provider.current_state
-            sr_state = service_queue.current_state
+            sq_state = service_queue.current_state
 
         # check for transient state
         if sp_state == 'transient':
-            for _state_power_item in service_provider.state_power:
-                if _state_power_item['state']['status'] == 'transient':
+            for _state in service_provider.state_machine:
+                if _state['state']['power_mode'] == 'transient':
                     PA2B = 0
-                    TA2B = _state_power_item['state']['transient_timing']['sleep2active']
+                    TA2B = _state['state']['transient_timing']['sleep2active']
                     PB2A = 0
-                    TB2A = _state_power_item['state']['transient_timing']['active2sleep']
+                    TB2A = _state['state']['transient_timing']['active2sleep']
 
-                    if _state_power_item['state']['status'] == 'active':
-                        PB2A = _state_power_item['state']['power']
+                    if _state['state']['power_mode'] == 'active':
+                        PB2A = _state['state']['power']
 
-                    elif _state_power_item['state']['status'] == 'sleep':
-                        PA2B = _state_power_item['state']['power']
+                    elif _state['state']['power_mode'] == 'sleep':
+                        PA2B = _state['state']['power']
 
                     return (PA2B * TA2B + PB2A * TB2A) / 2.0
 
         else:
-            state_action = {'service_provider': {'state_power': service_provider.state_power,
+            state_action = {'service_provider': {'state_machine': service_provider.state_machine,
                                                  'state': sp_state},
-                            'service_requester': {'state': service_requester.current_state,
-                                                  'power':  {'idle': 1.0, 'low': 1.0, 'high': 1.0}},
-                            'service_queue': {'state': sr_state}}
+                            'service_requester': {'state': sr_state},
+                            'service_queue': {'state': sq_state}}
 
             return _power_cost(_state_action=state_action) + delta*_performance_penalty(_state_action=state_action)
-
-
-
-"""
-# internal function
-        def _q_value_function(_q_values: pd.DataFrame, _state: str, _state_prime: str,
-                              _action: str, _action_prime: str, _cost: float, _epsilon: float = 1.0, _debug: bool = False):
-            # .filter(items=[], axis=0) will filter the DataFrame row-wise (axis=0) returning the matching row in items
-            # .idxmin(axis=1) returns the column name (axis=1) with the minimum value in the entire row
-            # .filter(items=[state], axis=0).idxmin(axis=1)[0] -> action to take
-
-            # sp_state, sr_sq_state = state
-            _old_q_value = _q_values[_action][_state]
-
-            # .filter(items=[], axis=0) will filter the DataFrame row-wise (axis=0) returning the matching row in items
-            # .min()[0] returns the value of the column with the minimum value
-            # .filter(items=[_state_prime], axis=0).min()[0]
-            _min_q_prime = _q_values[_action_prime][_state_prime]
-
-            if _debug:
-                self.print(f"Q(s'={_state_prime}, a'={_action_prime}) -> {_min_q_prime}")
-
-            #_q_value = (1 - _epsilon) * _old_q_value + _epsilon * (_cost + _min_q_prime)
-            _gamma = 1
-            _q_value = _old_q_value + _epsilon*(_cost + _gamma*_min_q_prime - _old_q_value)
-            #print(_q_value)
-            return _q_value
-            
-            """
