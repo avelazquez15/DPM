@@ -13,7 +13,7 @@ A Dynamic Power Management algorithm using Reinforcement Learning for IoT device
 ### Service Provider - Power Cost
 ![Service Provider - Power Cost](images/ServiceProviderPowerCost.png)
 
-### Service Provider - Power Moder
+### Service Provider - Power Mode
 ![Service Provider - Power Mode](images/ServiceProviderPowerMode.png)
 
 ### Service Queue - Requests
@@ -149,24 +149,16 @@ A Dynamic Power Management algorithm using Reinforcement Learning for IoT device
 # Explanation
 
 This algorithm models a [Texas Instrument CC2652R7 Wireless MCU](https://www.ti.com/product/CC2652R7#product-details) 
-as a Service Provider, a Service Requester modeling an iOS application that requests access to the Bluetooth component 
-of the CC2652R7 peripheral device, and the requests are buffered in a Service Queue of length (N=12). 
+as a Service Provider, an iOS application as a Service Requester that makes requests to access the Bluetooth component 
+of the CC2652R7 peripheral device, and the requests are buffered in a Service Queue of length N=12. 
 
-The goal of the algorithm is to strike a balance between the amount of Power (Watts) and Performance (Speed) of the 
-system. Performance is measured as the number of requests waiting to be process in the service queue and Power is 
-measured as the RMS Power utilized. 
+The goal of the algorithm is to determine the optimum policy for minimizing the system cost between the electrical power utilized by the service provider and the performance of processing the requests of a service requester. Performance is measured as the number of requests waiting to be processed in the service queue and power is measured as the electrical energy spent in a given power-mode. Requests to the servier provider are modeled as iterarrivals which represent the time of arrival a request to access the service provider has been detected. In practice the reinforcement learning agent takes an action, observes the cost for taking the action, and updates the action's q-value.
 
-Interarrivals represents the time of arrival for a request to the Service Provider (e.g., Bluetooth Module).
+The service provider in the DPM algorithm contains an active power-mode and sleep power-mode, the service requester can either request access to the service provider in a low, high, or idle frequency, finally the requests are buffered in the service queue which can be of length N.
 
-In practice the reinforcement agent takes an action, observes the cost for taken the action, and updates the value in
-the q-value table. The goal is to minimize the cost for taking an action. In the models below the Service Provider 
-contains both an active and sleep power state, the Service Requester can either request access to the service provider 
-in a low, high, or idle mode, and finally the requests that are buffered in the service queue can be of length N where
-each length represents the state of the queue.
-
-The [results](#results) section compares the Dynamic Power Management algorithm implemented using Reinforcement Learning
-to processing a request by the service requester immediately then going directly to a sleep state. The DPM algorithm 
-decreases the power utilized by ~150% but roughly 2.66 requests will be waiting in the queue to be processed instead of 0.
+The [results](#results) section compares the Dynamic Power Management algorithm policy implemented using a Reinforcement Learning agent
+to a generic policy of immediately processing requests when they arrive then going directly into a sleep state. The DPM algorithm 
+achieved to decrease the power utilization by ~150% and roughly kept 2.66 requests waiting in the service queue.
 
 ### Agent & Environment
 ![Agent & Envronment](images/AgentEnvironment.png)
@@ -179,8 +171,6 @@ _source: [1]_
 ### Q Value Function
 ![Qvalue Function](images/QValueFunction.png)
 _source: [1]_
-
-
 
 
 # References
