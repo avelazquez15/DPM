@@ -1,5 +1,4 @@
 from services import ServiceProvider, ServiceRequestor, ServiceQueue
-import math
 import numpy as np
 import pandas as pd
 
@@ -115,8 +114,6 @@ class Environment:
     def stimulate(self, clock: int):
 
         print(f"\n Environment Stimulated(Clock={clock})")
-        state = f"(sp={self.ble_module.current_state}, sr={self.ios_app.current_state}, sq={self.service_queue.current_state})"
-        # print(f"S[t] -> {state}")
         if clock in self.inter_arrival:
             client_requests = self.generate_requests(transfer_rate=self.ble_module.transfer_rate)
             # print(f"Client Requested -> {client_requests}")

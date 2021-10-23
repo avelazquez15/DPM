@@ -121,9 +121,9 @@ class QLearning(Policy):
             if is_virtual_state:
                 self.print('\t___ VIRTUAL STATE ___')
 
-            self.print(f"Cost(s={sp_sr_sq_state},a={action}) -> {cost}")
-            self.print(f"Q(s={sp_sr_sq_state}, a={action}) -> {q_value}")
-            self.print(f"Q(s'={sp_sr_sq_state_prime}, a'={action_prime}) -> {min_q_prime}")
+            self.print(f"Cost(S={sp_sr_sq_state},A={action}) -> {cost}")
+            self.print(f"Q(S={sp_sr_sq_state}, A={action}) -> {q_value}")
+            self.print(f"Q(S'={sp_sr_sq_state_prime}, A'={action_prime}) -> {min_q_prime}")
 
         if is_virtual_state:
             self.q_values.loc[sp_sr_sq_state][action_prime] = q_value

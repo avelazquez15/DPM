@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 from environment import Environment
 from policies import QLearning
 import matplotlib.pyplot as plt
@@ -88,14 +87,14 @@ class DPM:
             real_cost = self.agent.cost_function(state_space=state_space,
                                                  delta=self.delta)
             power.append(real_cost)
-            self.print(f"\nCost(s={self.pcba.ble_module.previous_state}, "
+            self.print(f"\nCost(sp={self.pcba.ble_module.previous_state}, "
                        f"a={self.pcba.ble_module.previous_action}) -> {real_cost}")
 
             # calculate previous q_value but don't persist value
-            q_min_prime = self.agent.calculate_q_value(state_space=state_space,
-                                                       action=self.pcba.ble_module.previous_action,
-                                                       cost=real_cost,
-                                                       debug=True)
+            self.agent.calculate_q_value(state_space=state_space,
+                                         action=self.pcba.ble_module.previous_action,
+                                         cost=real_cost,
+                                         debug=True)
 
             previous_action = self.pcba.ble_module.previous_action
             previous_sp_state = self.pcba.ble_module.previous_state
@@ -110,9 +109,8 @@ class DPM:
             current_state = f'(sp={current_sp_state},sr={current_sr_state},sq={current_sq_state})'
 
             # TODO: add support for multiple service providers and service queues
-            # for _sp_state in self.pcba.ble_module.states:
-            #
-            #     for _sq_state in self.pcba.service_queue.states:
+            # for _sp in self.pcba.sps
+            #     for _sq in self.pcba.sqs
 
             for _action in self.pcba.ble_module.actions:
                 virtual_state_action = (previous_state, _action)
@@ -131,14 +129,13 @@ class DPM:
 
                 self.print(f"\nCost(S'={current_state}, A'={_action}) -> {virtual_cost}")
 
-                virtual_q_min_prime = self.agent.calculate_q_value(state_space=state_space,
-                                                                   action=_action,
-                                                                   cost=virtual_cost,
-                                                                   is_virtual_state=True,
-                                                                   debug=True)
+                self.agent.calculate_q_value(state_space=state_space,
+                                             action=_action,
+                                             cost=virtual_cost,
+                                             is_virtual_state=True,
+                                             debug=True)
 
                 self.print(f"\n\t__________________ VIRTUAL STATE (END) _______________________________")
-            self.print("\n[AFTER]")
             self.print(self.pcba.service_queue.queue)
 
             clk += 1
