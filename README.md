@@ -154,7 +154,7 @@ of the CC2652R7 peripheral device, and the requests are buffered in a Service Qu
 
 The goal of the algorithm is to determine the optimum policy for minimizing the system cost between the electrical power utilized by the service provider and the performance of processing the requests of a service requester. Performance is measured as the number of requests waiting to be processed in the service queue and power is measured as the electrical energy spent in a given power-mode. Requests to the servier provider are modeled as iterarrivals which represent the time of arrival a request to access the service provider has been detected. In practice the reinforcement learning agent takes an action, observes the cost for taking the action, and updates the action's q-value.
 
-This algorithm models a service provider which contains an active power-mode and sleep power-mode, the service requester can either request access to the service provider in a low, high, or idle frequency, finally the requests are buffered in the service queue which can be of length N.
+The service provider in the DPM algorithm contains an active power-mode and sleep power-mode, the service requester can either request access to the service provider in a low, high, or idle frequency, finally the requests are buffered in the service queue which can be of length N.
 
 The [results](#results) section compares the Dynamic Power Management algorithm policy implemented using a Reinforcement Learning agent
 to a generic policy of immediately processing requests when they arrive then going directly into a sleep state. The DPM algorithm 
